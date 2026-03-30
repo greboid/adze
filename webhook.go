@@ -1,0 +1,65 @@
+package main
+
+import (
+	"context"
+	"io"
+	"log/slog"
+	"net/http"
+)
+
+func NewHandler(secrets []string, updater ImageUpdater) *Handler {
+	h := &Handler{
+		secrets: secrets,
+		updater: updater,
+		updates: make(chan updateRequest, 100),
+	}
+	go h.processUpdates()
+	return h
+}
+
+func (h *Handler) Shutdown() {
+	close(h.updates)
+}
+
+func (h *Handler) processUpdates() {
+	for req := range h.updates {
+		if err := h.updater.HandleUpdate(req.ctx, req.image); err != nil {
+			slog.Error("update failed", "error", err)
+		}
+	}
+}
+
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	bodyReader := http.MaxBytesReader(w, r.Body, 500000)
+	body, err := io.ReadAll(bodyReader)
+	defer bodyReader.Close()
+	if err != nil {
+		slog.Error("error reading body", "error", err)
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	if !validateSignature(h.secrets, r.Header, body) {
+		slog.Warn("webhook signature validation failed")
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	image := extractImage(body)
+	if image == "" {
+		slog.Error("Payload doesn't match known image format.")
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	slog.Info("received webhook", "image", image)
+
+	select {
+	case h.updates <- updateRequest{
+		ctx:   context.WithoutCancel(r.Context()),
+		image: image,
+	}:
+		w.WriteHeader(http.StatusAccepted)
+	default:
+		http.Error(w, "too many requests", http.StatusTooManyRequests)
+	}
+}
