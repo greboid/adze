@@ -10,6 +10,26 @@ Works with Forgejo and Gitea container registry webhooks out of the box, or anyt
 
 You need Docker with the Compose plugin available on the host.
 
+### Docker
+
+```yaml
+# compose.yml
+services:
+  adze:
+    environment:
+      - ADDR=:8080
+      - SECRET=your-webhook-secret
+    ports:
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+```
+```
+docker compose up -d
+```
+
+### Binary
+
 ```
 go build -o adze .
 ./adze -addr :8080 -secret your-webhook-secret
