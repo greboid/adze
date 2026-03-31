@@ -16,6 +16,7 @@ import (
 
 	"github.com/csmith/envflag/v2"
 	"github.com/docker/cli/cli/command"
+	"github.com/docker/cli/cli/config"
 	cliflags "github.com/docker/cli/cli/flags"
 	"github.com/docker/compose/v2/pkg/compose"
 	"github.com/docker/docker/client"
@@ -45,11 +46,16 @@ func run() error {
 		return fmt.Errorf("secret is required")
 	}
 
+	opts := cliflags.NewClientOptions()
+	if fi, err := os.Stat(config.Dir()); err == nil && fi.IsDir() {
+		opts.ConfigDir = config.Dir()
+	}
+
 	dockerCli, err := command.NewDockerCli()
 	if err != nil {
 		return fmt.Errorf("creating docker cli: %w", err)
 	}
-	if err := dockerCli.Initialize(cliflags.NewClientOptions()); err != nil {
+	if err := dockerCli.Initialize(opts); err != nil {
 		return fmt.Errorf("initializing docker cli: %w", err)
 	}
 	composeService := compose.NewComposeService(dockerCli)

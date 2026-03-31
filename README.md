@@ -20,11 +20,13 @@ services:
     environment:
       - ADDR=:8080
       - SECRET=your-webhook-secret
+      - DOCKER_CONFIG=/docker
     ports:
       - "8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /path/to/your/compose/files:/path/to/your/compose/files:ro
+      - /home/youruser/.docker:/docker:ro
 ```
 ```
 docker compose up -d
@@ -37,7 +39,7 @@ go build -o adze .
 ./adze -addr :8080 -secret your-webhook-secret
 ```
 
-Both flags can also be set via environment variables (`ADDR`, `SECRET`). You can pass multiple secrets separated by commas.
+Both flags can also be set via environment variables (`ADDR`, `SECRET`). You can pass multiple secrets separated by commas. If your registry requires authentication, mount `~/.docker` (shown above) or set `DOCKER_CONFIG` to point to a directory containing your Docker config.
 
 Then point your registry webhook at `http://<host>:8080/webhook`.
 
