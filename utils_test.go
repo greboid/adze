@@ -71,6 +71,63 @@ func makeSignature(secret string, body []byte) string {
 	return "sha256=" + hex.EncodeToString(mac.Sum(nil))
 }
 
+func TestGenerateEndpointPath(t *testing.T) {
+	t.Run("produces GUID format", func(t *testing.T) {
+		path := generateEndpointPath("secret", 0)
+		if len(path) != 36 {
+			t.Errorf("expected 36-char GUID, got %d chars: %q", len(path), path)
+		}
+		parts := strings.Split(path, "-")
+		if len(parts) != 5 {
+			t.Errorf("expected 5 hyphen-separated parts, got %d: %q", len(parts), path)
+		}
+		lengths := []int{8, 4, 4, 4, 12}
+		for i, part := range parts {
+			if len(part) != lengths[i] {
+				t.Errorf("part %d: expected %d chars, got %d: %q", i, lengths[i], len(part), part)
+			}
+		}
+	})
+
+	t.Run("is deterministic", func(t *testing.T) {
+		a := generateEndpointPath("mysecret", 0)
+		b := generateEndpointPath("mysecret", 0)
+		if a != b {
+			t.Errorf("same inputs produced different outputs: %q vs %q", a, b)
+		}
+	})
+
+	t.Run("different secrets produce different paths", func(t *testing.T) {
+		a := generateEndpointPath("secret1", 0)
+		b := generateEndpointPath("secret2", 0)
+		if a == b {
+			t.Errorf("different secrets produced same path: %q", a)
+		}
+	})
+
+	t.Run("different indices produce different paths", func(t *testing.T) {
+		a := generateEndpointPath("secret", 0)
+		b := generateEndpointPath("secret", 1)
+		if a == b {
+			t.Errorf("different indices produced same path: %q", a)
+		}
+	})
+
+	t.Run("matches expected HMAC-SHA256 output", func(t *testing.T) {
+		secret := "testsecret"
+		index := 5
+		mac := hmac.New(sha256.New, []byte(secret))
+		mac.Write([]byte("5"))
+		fullHash := hex.EncodeToString(mac.Sum(nil))
+		expected := fullHash[0:8] + "-" + fullHash[8:12] + "-" + fullHash[12:16] + "-" + fullHash[16:20] + "-" + fullHash[20:32]
+
+		result := generateEndpointPath(secret, index)
+		if result != expected {
+			t.Errorf("generateEndpointPath() = %q, want %q", result, expected)
+		}
+	})
+}
+
 func TestValidateSignature(t *testing.T) {
 	body := []byte(`{"test": "data"}`)
 	secret := "mysecret"

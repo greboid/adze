@@ -31,6 +31,7 @@ func main() {
 func run() error {
 	addr := flag.String("addr", ":8080", "address to listen on")
 	secret := flag.String("secret", "", "shared secret(s) for webhook signatures, comma-separated (required)")
+	dangerEndpoints := flag.Int("danger-endpoints", 0, "number of unauthenticated webhook endpoints to generate")
 
 	envflag.Parse()
 
@@ -71,6 +72,13 @@ func run() error {
 
 	mux := http.NewServeMux()
 	mux.Handle("POST /webhook", handler)
+
+	dangerHandler := http.HandlerFunc(handler.ServeHTTPDanger)
+	for i := range *dangerEndpoints {
+		path := generateEndpointPath(secrets[0], i)
+		slog.Info("danger endpoint", "path", "/webhook/"+path)
+		mux.Handle("POST /webhook/"+path, dangerHandler)
+	}
 
 	srv := &http.Server{
 		Addr:    *addr,

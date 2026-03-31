@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/compose-spec/compose-go/v2/cli"
@@ -49,6 +50,14 @@ func extractImage(body []byte) string {
 		return p.Image
 	}
 	return ""
+}
+
+func generateEndpointPath(secret string, index int) string {
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write([]byte(strconv.Itoa(index)))
+	b := mac.Sum(nil)[:16]
+	h := hex.EncodeToString(b)
+	return h[0:8] + "-" + h[8:12] + "-" + h[12:16] + "-" + h[16:20] + "-" + h[20:32]
 }
 
 func normalizeImage(ref string) string {

@@ -30,6 +30,14 @@ func (h *Handler) processUpdates() {
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.handleWebhook(w, r, false)
+}
+
+func (h *Handler) ServeHTTPDanger(w http.ResponseWriter, r *http.Request) {
+	h.handleWebhook(w, r, true)
+}
+
+func (h *Handler) handleWebhook(w http.ResponseWriter, r *http.Request, skipSignature bool) {
 	bodyReader := http.MaxBytesReader(w, r.Body, 500000)
 	body, err := io.ReadAll(bodyReader)
 	defer bodyReader.Close()
@@ -39,7 +47,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !validateSignature(h.secrets, r.Header, body) {
+	if !skipSignature && !validateSignature(h.secrets, r.Header, body) {
 		slog.Warn("webhook signature validation failed")
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
@@ -51,7 +59,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
-	slog.Info("received webhook", "image", image)
+	slog.Info("received webhook", "image", image, "source", r.URL.Path)
 
 	select {
 	case h.updates <- updateRequest{

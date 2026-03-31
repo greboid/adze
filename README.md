@@ -2,9 +2,38 @@
 
 A small webhook receiver that keeps your Docker Compose services up to date.
 
-When a container image is pushed to your registry, Adze catches the webhook, finds any Compose projects running that image, and pulls + redeploys them. No cron, no polling.
+When a container image is pushed to your registry, Adze catches the webhook, finds any Compose projects running that image, and pulls + redeploys them. No cron, no polling. Updates are queued and processed one at a time so nothing steps on anything else.
 
 Works with Forgejo and Gitea container registry webhooks out of the box, or anything that can send a JSON body with an `image` field.
+
+## Configuration
+
+| Flag | Env var | Default | Description |
+|------|---------|---------|-------------|
+| `-addr` | `ADDR` | `:8080` | Address to listen on |
+| `-secret` | `SECRET` | (required) | Shared secret(s) for webhook signatures, comma-separated |
+| `-danger-endpoints` | `DANGER_ENDPOINTS` | `0` | Number of unauthenticated webhook endpoints to generate |
+
+If your registry requires authentication, mount `~/.docker` or set `DOCKER_CONFIG` to point to a directory containing your Docker config.
+
+### Unauthenticated endpoints
+
+If you have services that can't send signed webhooks, you can generate unauthenticated endpoints with `-danger-endpoints <n>` (or `DANGER_ENDPOINTS`). This creates `n` endpoints at `/webhook/<guid>` that accept requests without signature validation. The GUIDs are derived from your first configured secret, so they remain stable across restarts.
+
+```yaml
+environment:
+  - SECRET=your-webhook-secret
+  - DANGER_ENDPOINTS=2
+```
+
+The generated paths are logged at startup:
+
+```
+info: danger endpoint path=/webhook/a1b2c3d4-e5f6-7890-abcd-ef1234567890
+info: danger endpoint path=/webhook/f9e8d7c6-b5a4-3210-fedc-ba0987654321
+```
+
+These endpoints are effectively passwords — treat the paths as secret.
 
 ## Running it
 
@@ -39,15 +68,4 @@ go build -o adze .
 ./adze -addr :8080 -secret your-webhook-secret
 ```
 
-Both flags can also be set via environment variables (`ADDR`, `SECRET`). You can pass multiple secrets separated by commas. If your registry requires authentication, mount `~/.docker` (shown above) or set `DOCKER_CONFIG` to point to a directory containing your Docker config.
-
 Then point your registry webhook at `http://<host>:8080/webhook`.
-
-## How it works
-
-1. A webhook arrives with an image name
-2. Adze lists running containers to find Compose projects using that image
-3. Each project gets a `docker compose up` with pull policy set to `always`
-4. Old containers are cleaned up
-
-Updates are queued and processed one at a time so nothing steps on anything else.
