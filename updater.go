@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"strings"
 
+	composetypes "github.com/compose-spec/compose-go/v2/types"
 	"github.com/docker/compose/v2/pkg/api"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
@@ -52,6 +53,14 @@ func (u *Updater) runUp(ctx context.Context, workingDir string, configFiles []st
 
 	for name, svc := range project.Services {
 		svc.PullPolicy = "always"
+		svc.CustomLabels = composetypes.Labels{
+			api.ProjectLabel:     project.Name,
+			api.ServiceLabel:     name,
+			api.VersionLabel:     api.ComposeVersion,
+			api.WorkingDirLabel:  project.WorkingDir,
+			api.ConfigFilesLabel: strings.Join(project.ComposeFiles, ","),
+			api.OneoffLabel:      "False",
+		}
 		project.Services[name] = svc
 	}
 
