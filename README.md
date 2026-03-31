@@ -24,7 +24,7 @@ services:
       - "8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - /path/to/your/compose/files:/path/to/your/compose/files
+      - /path/to/your/compose/files:/path/to/your/compose/files:ro
 ```
 ```
 docker compose up -d
