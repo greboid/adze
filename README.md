@@ -8,7 +8,7 @@ Works with Forgejo and Gitea container registry webhooks out of the box, or anyt
 
 ## Running it
 
-You need Docker with the Compose plugin available on the host.
+You need Docker with the Compose plugin available on the host. Adze needs access to the Docker socket and the filesystem containing your Compose files (it reads them directly, not through the Docker API).
 
 ### Docker
 
@@ -16,6 +16,7 @@ You need Docker with the Compose plugin available on the host.
 # compose.yml
 services:
   adze:
+    image: ghcr.io/greboid/adze:latest
     environment:
       - ADDR=:8080
       - SECRET=your-webhook-secret
@@ -23,6 +24,7 @@ services:
       - "8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - /path/to/your/compose/files:/path/to/your/compose/files
 ```
 ```
 docker compose up -d
