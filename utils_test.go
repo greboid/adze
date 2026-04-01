@@ -41,7 +41,8 @@ func TestExtractImage(t *testing.T) {
 		expected string
 	}{
 		// Forgejo
-		{"forgejo with owner", `{"package":{"owner":{"login":"myorg"},"type":"container","name":"myapp"}}`, "myorg/myapp"},
+		{"forgejo with owner", `{"package":{"owner":{"login":"myorg","html_url":"https://git.example.com/myorg"},"type":"container","name":"myapp"}}`, "git.example.com/myorg/myapp"},
+		{"forgejo with owner no html_url", `{"package":{"owner":{"login":"myorg"},"type":"container","name":"myapp"}}`, "myorg/myapp"},
 		{"forgejo no owner", `{"package":{"type":"container","name":"myapp"}}`, ""},
 		{"forgejo non-container type", `{"package":{"type":"npm","name":"myapp"}}`, ""},
 		{"forgejo empty name", `{"package":{"type":"container","name":""}}`, ""},

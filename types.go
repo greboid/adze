@@ -71,7 +71,8 @@ type webhookPayload struct {
 	Image   string `json:"image"`
 	Package struct {
 		Owner struct {
-			Login string `json:"login"`
+			Login   string `json:"login"`
+			HTMLURL string `json:"html_url"`
 		} `json:"owner"`
 		Type        string `json:"type"`
 		PackageType string `json:"package_type"`

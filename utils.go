@@ -78,7 +78,11 @@ func extractImage(body []byte) string {
 	}
 	if p.Package.Owner.Login != "" && p.Package.Name != "" &&
 		(p.Package.Type == "container" || p.Package.PackageType == "CONTAINER") {
-		return p.Package.Owner.Login + "/" + p.Package.Name
+		image := p.Package.Owner.Login + "/" + p.Package.Name
+		if u, err := url.Parse(p.Package.Owner.HTMLURL); err == nil && u.Host != "" {
+			image = u.Host + "/" + image
+		}
+		return image
 	}
 	if p.Image != "" {
 		return p.Image
