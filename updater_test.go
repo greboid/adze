@@ -15,10 +15,10 @@ func TestFindComposeProjects_MatchingContainer(t *testing.T) {
 	lister := &mockContainerLister{
 		containers: []container.Summary{
 			{
-				Image:  "myapp:latest",
+				Image: "myapp:latest",
 				Labels: map[string]string{
-					api.ProjectLabel:    "myproject",
-					api.WorkingDirLabel: "/opt/myapp",
+					api.ProjectLabel:     "myproject",
+					api.WorkingDirLabel:  "/opt/myapp",
 					api.ConfigFilesLabel: "/opt/myapp/docker-compose.yml",
 				},
 			},
@@ -362,4 +362,3 @@ func TestHandleUpdate_NoConfigFiles(t *testing.T) {
 		t.Errorf("expected no config files, got %v", loader.configFiles)
 	}
 }
-

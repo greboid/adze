@@ -68,7 +68,7 @@ func (e *UpdateErrors) Unwrap() []error {
 }
 
 type webhookPayload struct {
-	Image  string `json:"image"`
+	Image   string `json:"image"`
 	Package struct {
 		Owner struct {
 			Login string `json:"login"`
@@ -81,6 +81,7 @@ type webhookPayload struct {
 		Action string `json:"action"`
 		Target struct {
 			Repository string `json:"repository"`
+			MediaType  string `json:"mediaType"`
 		} `json:"target"`
 		Request struct {
 			Host string `json:"host"`

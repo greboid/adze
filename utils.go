@@ -87,6 +87,9 @@ func extractImage(body []byte) string {
 		if event.Action != "push" {
 			continue
 		}
+		if event.Target.MediaType != "" && !strings.Contains(event.Target.MediaType, "manifest") && !strings.Contains(event.Target.MediaType, "image.index") {
+			continue
+		}
 		if event.Target.Repository != "" {
 			if event.Request.Host != "" {
 				return event.Request.Host + "/" + event.Target.Repository

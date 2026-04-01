@@ -45,22 +45,25 @@ func TestExtractImage(t *testing.T) {
 		{"forgejo no owner", `{"package":{"type":"container","name":"myapp"}}`, ""},
 		{"forgejo non-container type", `{"package":{"type":"npm","name":"myapp"}}`, ""},
 		{"forgejo empty name", `{"package":{"type":"container","name":""}}`, ""},
-			// GitHub Container Registry
-			{"github package published", `{"action":"published","package":{"owner":{"login":"myorg"},"package_type":"CONTAINER","name":"myapp"}}`, "myorg/myapp"},
-			{"github package no owner", `{"package":{"package_type":"CONTAINER","name":"myapp"}}`, ""},
-			{"github package non-container type", `{"package":{"package_type":"NPM","name":"myapp"}}`, ""},
-			{"github package empty name", `{"package":{"owner":{"login":"myorg"},"package_type":"CONTAINER","name":""}}`, ""},
+		// GitHub Container Registry
+		{"github package published", `{"action":"published","package":{"owner":{"login":"myorg"},"package_type":"CONTAINER","name":"myapp"}}`, "myorg/myapp"},
+		{"github package no owner", `{"package":{"package_type":"CONTAINER","name":"myapp"}}`, ""},
+		{"github package non-container type", `{"package":{"package_type":"NPM","name":"myapp"}}`, ""},
+		{"github package empty name", `{"package":{"owner":{"login":"myorg"},"package_type":"CONTAINER","name":""}}`, ""},
 		// Generic
 		{"generic image", `{"image":"myregistry/myapp"}`, "myregistry/myapp"},
 		{"generic empty image", `{"image":"","tag":"latest"}`, ""},
 		// Docker registry v2
-		{"docker registry push", `{"events":[{"action":"push","target":{"repository":"myorg/myapp"}}]}`, "myorg/myapp"},
-		{"docker registry multiple events", `{"events":[{"action":"push","target":{"repository":"myorg/app1"}},{"action":"push","target":{"repository":"myorg/app2"}}]}`, "myorg/app1"},
+		{"docker registry push", `{"events":[{"action":"push","target":{"repository":"myorg/myapp","mediaType":"application/vnd.docker.distribution.manifest.v2+json"}}]}`, "myorg/myapp"},
+		{"docker registry push no media type", `{"events":[{"action":"push","target":{"repository":"myorg/myapp"}}]}`, "myorg/myapp"},
+		{"docker registry blob push ignored", `{"events":[{"action":"push","target":{"repository":"myorg/myapp","mediaType":"application/octet-stream"}}]}`, ""},
+		{"docker registry multiple events", `{"events":[{"action":"push","target":{"repository":"myorg/app1","mediaType":"application/vnd.docker.distribution.manifest.v2+json"}},{"action":"push","target":{"repository":"myorg/app2","mediaType":"application/vnd.docker.distribution.manifest.v2+json"}}]}`, "myorg/app1"},
 		{"docker registry empty events", `{"events":[]}`, ""},
 		{"docker registry no repository", `{"events":[{"action":"push","target":{}}]}`, ""},
 		{"docker registry pull ignored", `{"events":[{"action":"pull","target":{"repository":"myorg/myapp"}}]}`, ""},
 		{"docker registry delete ignored", `{"events":[{"action":"delete","target":{"repository":"myorg/myapp"}}]}`, ""},
-		{"docker registry mixed actions", `{"events":[{"action":"pull","target":{"repository":"myorg/myapp"}},{"action":"push","target":{"repository":"myorg/myapp"}}]}`, "myorg/myapp"},
+		{"docker registry mixed actions", `{"events":[{"action":"pull","target":{"repository":"myorg/myapp"}},{"action":"push","target":{"repository":"myorg/myapp","mediaType":"application/vnd.docker.distribution.manifest.v2+json"}}]}`, "myorg/myapp"},
+		{"docker registry oci index", `{"events":[{"action":"push","target":{"repository":"myorg/myapp","mediaType":"application/vnd.oci.image.index.v1+json"}}]}`, "myorg/myapp"},
 		// Edge cases
 		{"malformed", `{"repository":`, ""},
 		{"garbage", `not json at all`, ""},
@@ -240,7 +243,6 @@ func TestValidateSignature(t *testing.T) {
 		})
 	}
 }
-
 
 func TestExtractPayload(t *testing.T) {
 	tests := []struct {
