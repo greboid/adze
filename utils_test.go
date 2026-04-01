@@ -45,9 +45,19 @@ func TestExtractImage(t *testing.T) {
 		{"forgejo no owner", `{"package":{"type":"container","name":"myapp"}}`, ""},
 		{"forgejo non-container type", `{"package":{"type":"npm","name":"myapp"}}`, ""},
 		{"forgejo empty name", `{"package":{"type":"container","name":""}}`, ""},
+			// GitHub Container Registry
+			{"github package published", `{"action":"published","package":{"owner":{"login":"myorg"},"package_type":"CONTAINER","name":"myapp"}}`, "myorg/myapp"},
+			{"github package no owner", `{"package":{"package_type":"CONTAINER","name":"myapp"}}`, ""},
+			{"github package non-container type", `{"package":{"package_type":"NPM","name":"myapp"}}`, ""},
+			{"github package empty name", `{"package":{"owner":{"login":"myorg"},"package_type":"CONTAINER","name":""}}`, ""},
 		// Generic
 		{"generic image", `{"image":"myregistry/myapp"}`, "myregistry/myapp"},
 		{"generic empty image", `{"image":"","tag":"latest"}`, ""},
+		// Docker registry v2
+		{"docker registry push", `{"events":[{"action":"push","target":{"repository":"myorg/myapp"}}]}`, "myorg/myapp"},
+		{"docker registry multiple events", `{"events":[{"action":"push","target":{"repository":"myorg/app1"}},{"action":"push","target":{"repository":"myorg/app2"}}]}`, "myorg/app1"},
+		{"docker registry empty events", `{"events":[]}`, ""},
+		{"docker registry no repository", `{"events":[{"action":"push","target":{}}]}`, ""},
 		// Edge cases
 		{"malformed", `{"repository":`, ""},
 		{"garbage", `not json at all`, ""},

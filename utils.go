@@ -58,11 +58,17 @@ func extractImage(body []byte) string {
 	if err := json.Unmarshal(body, &p); err != nil {
 		return ""
 	}
-	if p.Package.Type == "container" && p.Package.Owner.Login != "" && p.Package.Name != "" {
+	if p.Package.Owner.Login != "" && p.Package.Name != "" &&
+		(p.Package.Type == "container" || p.Package.PackageType == "CONTAINER") {
 		return p.Package.Owner.Login + "/" + p.Package.Name
 	}
 	if p.Image != "" {
 		return p.Image
+	}
+	for _, event := range p.Events {
+		if event.Target.Repository != "" {
+			return event.Target.Repository
+		}
 	}
 	return ""
 }
