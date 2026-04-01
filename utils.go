@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -20,6 +21,12 @@ func validateSignature(secrets []string, headers http.Header, body []byte) bool 
 	sig := headers.Get("X-Forgejo-Signature")
 	if sig == "" {
 		sig = headers.Get("X-Gitea-Signature")
+	}
+	if sig == "" {
+		sig = headers.Get("X-Hub-Signature-256")
+	}
+	if sig == "" {
+		sig = headers.Get("X-Hub-Signature")
 	}
 	if sig == "" {
 		return validateBearer(secrets, headers)
@@ -51,6 +58,17 @@ func validateBearer(secrets []string, headers http.Header) bool {
 		}
 	}
 	return false
+}
+
+func extractPayload(body []byte, contentType string) []byte {
+	if strings.HasPrefix(contentType, "application/x-www-form-urlencoded") {
+		if values, err := url.ParseQuery(string(body)); err == nil {
+			if payload := values.Get("payload"); payload != "" {
+				return []byte(payload)
+			}
+		}
+	}
+	return body
 }
 
 func extractImage(body []byte) string {

@@ -209,6 +209,18 @@ func TestValidateSignature(t *testing.T) {
 			secrets: []string{secret},
 			want:    true,
 		},
+		{
+			name:    "valid X-Hub-Signature-256",
+			headers: map[string]string{"X-Hub-Signature-256": validSig},
+			secrets: []string{secret},
+			want:    true,
+		},
+		{
+			name:    "valid X-Hub-Signature",
+			headers: map[string]string{"X-Hub-Signature": validSig},
+			secrets: []string{secret},
+			want:    true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -221,6 +233,29 @@ func TestValidateSignature(t *testing.T) {
 			result := validateSignature(tt.secrets, headers, body)
 			if result != tt.want {
 				t.Errorf("validateSignature() = %v, want %v", result, tt.want)
+			}
+		})
+	}
+}
+
+
+func TestExtractPayload(t *testing.T) {
+	tests := []struct {
+		name        string
+		body        string
+		contentType string
+		expected    string
+	}{
+		{"json content type", `{"image":"myapp"}`, "application/json", `{"image":"myapp"}`},
+		{"form encoded with payload", "payload=%7B%22image%22%3A%22myapp%22%7D", "application/x-www-form-urlencoded", `{"image":"myapp"}`},
+		{"form encoded no payload", "other=data", "application/x-www-form-urlencoded", "other=data"},
+		{"empty content type", `{"image":"myapp"}`, "", `{"image":"myapp"}`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := string(extractPayload([]byte(tt.body), tt.contentType))
+			if result != tt.expected {
+				t.Errorf("extractPayload() = %q, want %q", result, tt.expected)
 			}
 		})
 	}
