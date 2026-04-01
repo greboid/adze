@@ -56,12 +56,12 @@ func TestExtractImage(t *testing.T) {
 		// Docker registry v2
 		{"docker registry push", `{"events":[{"action":"push","target":{"repository":"myorg/myapp","mediaType":"application/vnd.docker.distribution.manifest.v2+json"}}]}`, "myorg/myapp"},
 		{"docker registry push no media type", `{"events":[{"action":"push","target":{"repository":"myorg/myapp"}}]}`, "myorg/myapp"},
-		{"docker registry blob push ignored", `{"events":[{"action":"push","target":{"repository":"myorg/myapp","mediaType":"application/octet-stream"}}]}`, ""},
+		{"docker registry blob push", `{"events":[{"action":"push","target":{"repository":"myorg/myapp","mediaType":"application/octet-stream"}}]}`, "myorg/myapp"},
 		{"docker registry multiple events", `{"events":[{"action":"push","target":{"repository":"myorg/app1","mediaType":"application/vnd.docker.distribution.manifest.v2+json"}},{"action":"push","target":{"repository":"myorg/app2","mediaType":"application/vnd.docker.distribution.manifest.v2+json"}}]}`, "myorg/app1"},
 		{"docker registry empty events", `{"events":[]}`, ""},
 		{"docker registry no repository", `{"events":[{"action":"push","target":{}}]}`, ""},
-		{"docker registry pull ignored", `{"events":[{"action":"pull","target":{"repository":"myorg/myapp"}}]}`, ""},
-		{"docker registry delete ignored", `{"events":[{"action":"delete","target":{"repository":"myorg/myapp"}}]}`, ""},
+		{"docker registry pull", `{"events":[{"action":"pull","target":{"repository":"myorg/myapp"}}]}`, "myorg/myapp"},
+		{"docker registry delete", `{"events":[{"action":"delete","target":{"repository":"myorg/myapp"}}]}`, "myorg/myapp"},
 		{"docker registry mixed actions", `{"events":[{"action":"pull","target":{"repository":"myorg/myapp"}},{"action":"push","target":{"repository":"myorg/myapp","mediaType":"application/vnd.docker.distribution.manifest.v2+json"}}]}`, "myorg/myapp"},
 		{"docker registry oci index", `{"events":[{"action":"push","target":{"repository":"myorg/myapp","mediaType":"application/vnd.oci.image.index.v1+json"}}]}`, "myorg/myapp"},
 		// Edge cases
@@ -76,6 +76,35 @@ func TestExtractImage(t *testing.T) {
 			result := extractImage([]byte(tt.body))
 			if result != tt.expected {
 				t.Errorf("extractImage() = %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestIsRelevantEvent(t *testing.T) {
+	tests := []struct {
+		name     string
+		body     string
+		expected bool
+	}{
+		{"push manifest", `{"events":[{"action":"push","target":{"repository":"myorg/myapp","mediaType":"application/vnd.docker.distribution.manifest.v2+json"}}]}`, true},
+		{"push no media type", `{"events":[{"action":"push","target":{"repository":"myorg/myapp"}}]}`, true},
+		{"push blob", `{"events":[{"action":"push","target":{"repository":"myorg/myapp","mediaType":"application/octet-stream"}}]}`, false},
+		{"pull", `{"events":[{"action":"pull","target":{"repository":"myorg/myapp"}}]}`, false},
+		{"delete", `{"events":[{"action":"delete","target":{"repository":"myorg/myapp"}}]}`, false},
+		{"oci index", `{"events":[{"action":"push","target":{"repository":"myorg/myapp","mediaType":"application/vnd.oci.image.index.v1+json"}}]}`, true},
+		{"oci manifest", `{"events":[{"action":"push","target":{"repository":"myorg/myapp","mediaType":"application/vnd.oci.image.manifest.v1+json"}}]}`, true},
+		{"generic image", `{"image":"myapp"}`, true},
+		{"forgejo package", `{"package":{"owner":{"login":"myorg"},"type":"container","name":"myapp"}}`, true},
+		{"empty events", `{"events":[]}`, false},
+		{"empty body", `{}`, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isRelevantEvent([]byte(tt.body))
+			if result != tt.expected {
+				t.Errorf("isRelevantEvent() = %v, want %v", result, tt.expected)
 			}
 		})
 	}

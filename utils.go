@@ -84,12 +84,6 @@ func extractImage(body []byte) string {
 		return p.Image
 	}
 	for _, event := range p.Events {
-		if event.Action != "push" {
-			continue
-		}
-		if event.Target.MediaType != "" && !strings.Contains(event.Target.MediaType, "manifest") && !strings.Contains(event.Target.MediaType, "image.index") {
-			continue
-		}
 		if event.Target.Repository != "" {
 			if event.Request.Host != "" {
 				return event.Request.Host + "/" + event.Target.Repository
@@ -98,6 +92,28 @@ func extractImage(body []byte) string {
 		}
 	}
 	return ""
+}
+
+func isRelevantEvent(body []byte) bool {
+	var p webhookPayload
+	if err := json.Unmarshal(body, &p); err != nil {
+		return false
+	}
+	if p.Package.Owner.Login != "" || p.Image != "" {
+		return true
+	}
+	for _, event := range p.Events {
+		if event.Action != "push" {
+			continue
+		}
+		if event.Target.MediaType != "" && !strings.Contains(event.Target.MediaType, "manifest") && !strings.Contains(event.Target.MediaType, "image.index") {
+			continue
+		}
+		if event.Target.Repository != "" {
+			return true
+		}
+	}
+	return false
 }
 
 func generateEndpointPath(secret string, index int) string {

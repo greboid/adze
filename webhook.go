@@ -53,12 +53,20 @@ func (h *Handler) handleWebhook(w http.ResponseWriter, r *http.Request, skipSign
 		return
 	}
 
-	image := extractImage(extractPayload(body, r.Header.Get("Content-Type")))
+	payload := extractPayload(body, r.Header.Get("Content-Type"))
+	image := extractImage(payload)
 	if image == "" {
 		slog.Error("Payload doesn't match known image format.")
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
+
+	if !isRelevantEvent(payload) {
+		slog.Info("ignoring event", "image", image, "source", r.URL.Path)
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	slog.Info("received webhook", "image", image, "source", r.URL.Path)
 
 	select {
