@@ -82,6 +82,9 @@ type webhookPayload struct {
 		Target struct {
 			Repository string `json:"repository"`
 		} `json:"target"`
+		Request struct {
+			Host string `json:"host"`
+		} `json:"request"`
 	} `json:"events"`
 }
 

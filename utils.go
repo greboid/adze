@@ -67,6 +67,9 @@ func extractImage(body []byte) string {
 	}
 	for _, event := range p.Events {
 		if event.Target.Repository != "" {
+			if event.Request.Host != "" {
+				return event.Request.Host + "/" + event.Target.Repository
+			}
 			return event.Target.Repository
 		}
 	}
