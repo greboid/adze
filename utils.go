@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -21,7 +22,7 @@ func validateSignature(secrets []string, headers http.Header, body []byte) bool 
 		sig = headers.Get("X-Gitea-Signature")
 	}
 	if sig == "" {
-		return false
+		return validateBearer(secrets, headers)
 	}
 
 	sig = strings.TrimPrefix(sig, "sha256=")
@@ -35,6 +36,20 @@ func validateSignature(secrets []string, headers http.Header, body []byte) bool 
 		}
 	}
 
+	return false
+}
+
+func validateBearer(secrets []string, headers http.Header) bool {
+	auth := headers.Get("Authorization")
+	if !strings.HasPrefix(auth, "Bearer ") {
+		return false
+	}
+	token := strings.TrimPrefix(auth, "Bearer ")
+	for _, secret := range secrets {
+		if subtle.ConstantTimeCompare([]byte(token), []byte(secret)) == 1 {
+			return true
+		}
+	}
 	return false
 }
 

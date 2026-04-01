@@ -158,6 +158,30 @@ func TestValidateSignature(t *testing.T) {
 			want:    false,
 		},
 		{
+			name:    "valid bearer token",
+			headers: map[string]string{"Authorization": "Bearer " + secret},
+			secrets: []string{secret},
+			want:    true,
+		},
+		{
+			name:    "invalid bearer token",
+			headers: map[string]string{"Authorization": "Bearer wrongtoken"},
+			secrets: []string{secret},
+			want:    false,
+		},
+		{
+			name:    "bearer with multiple secrets one valid",
+			headers: map[string]string{"Authorization": "Bearer " + secret},
+			secrets: []string{"wrong1", secret, "wrong2"},
+			want:    true,
+		},
+		{
+			name:    "bearer with wrong auth scheme",
+			headers: map[string]string{"Authorization": "Basic dXNlcjpwYXNz"},
+			secrets: []string{secret},
+			want:    false,
+		},
+		{
 			name:    "wrong secret",
 			headers: map[string]string{"X-Forgejo-Signature": validSig},
 			secrets: []string{"wrongsecret"},
