@@ -58,6 +58,9 @@ func TestExtractImage(t *testing.T) {
 		{"docker registry multiple events", `{"events":[{"action":"push","target":{"repository":"myorg/app1"}},{"action":"push","target":{"repository":"myorg/app2"}}]}`, "myorg/app1"},
 		{"docker registry empty events", `{"events":[]}`, ""},
 		{"docker registry no repository", `{"events":[{"action":"push","target":{}}]}`, ""},
+		{"docker registry pull ignored", `{"events":[{"action":"pull","target":{"repository":"myorg/myapp"}}]}`, ""},
+		{"docker registry delete ignored", `{"events":[{"action":"delete","target":{"repository":"myorg/myapp"}}]}`, ""},
+		{"docker registry mixed actions", `{"events":[{"action":"pull","target":{"repository":"myorg/myapp"}},{"action":"push","target":{"repository":"myorg/myapp"}}]}`, "myorg/myapp"},
 		// Edge cases
 		{"malformed", `{"repository":`, ""},
 		{"garbage", `not json at all`, ""},
