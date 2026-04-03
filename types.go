@@ -8,6 +8,7 @@ import (
 	composetypes "github.com/compose-spec/compose-go/v2/types"
 	"github.com/docker/compose/v2/pkg/api"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/swarm"
 )
 
 type ContainerLister interface {
@@ -20,6 +21,14 @@ type ComposeUpRunner interface {
 
 type ProjectLoader interface {
 	LoadProject(ctx context.Context, workingDir string, configFiles []string) (*composetypes.Project, error)
+}
+
+type ServiceLister interface {
+	ServiceList(ctx context.Context, options swarm.ServiceListOptions) ([]swarm.Service, error)
+}
+
+type ServiceUpdater interface {
+	ServiceUpdate(ctx context.Context, serviceID string, version swarm.Version, spec swarm.ServiceSpec, options swarm.ServiceUpdateOptions) (swarm.ServiceUpdateResponse, error)
 }
 
 type ImageUpdater interface {

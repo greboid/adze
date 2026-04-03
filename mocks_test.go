@@ -7,6 +7,7 @@ import (
 	composetypes "github.com/compose-spec/compose-go/v2/types"
 	"github.com/docker/compose/v2/pkg/api"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/swarm"
 )
 
 type mockContainerLister struct {
@@ -43,4 +44,29 @@ func (m *mockProjectLoader) LoadProject(_ context.Context, workingDir string, co
 	m.workingDir = workingDir
 	m.configFiles = configFiles
 	return m.project, m.err
+}
+
+type mockServiceLister struct {
+	services []swarm.Service
+	err      error
+}
+
+func (m *mockServiceLister) ServiceList(_ context.Context, _ swarm.ServiceListOptions) ([]swarm.Service, error) {
+	return m.services, m.err
+}
+
+type mockServiceUpdater struct {
+	called    atomic.Bool
+	serviceID string
+	version   swarm.Version
+	spec      swarm.ServiceSpec
+	err       error
+}
+
+func (m *mockServiceUpdater) ServiceUpdate(_ context.Context, serviceID string, version swarm.Version, spec swarm.ServiceSpec, _ swarm.ServiceUpdateOptions) (swarm.ServiceUpdateResponse, error) {
+	m.called.Store(true)
+	m.serviceID = serviceID
+	m.version = version
+	m.spec = spec
+	return swarm.ServiceUpdateResponse{}, m.err
 }

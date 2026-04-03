@@ -66,7 +66,10 @@ func run() error {
 		return fmt.Errorf("creating docker client: %w", err)
 	}
 
-	updater := NewUpdater(composeService, dockerClient, ComposeProjectLoader{})
+	updater, err := createUpdater(dockerClient, composeService)
+	if err != nil {
+		return err
+	}
 
 	handler := NewHandler(secrets, updater)
 
@@ -114,4 +117,22 @@ func run() error {
 
 	slog.Info("server stopped")
 	return nil
+}
+
+func createUpdater(dockerClient *client.Client, composeService ComposeUpRunner) (ImageUpdater, error) {
+	info, err := dockerClient.Info(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("getting docker info: %w", err)
+	}
+
+	if info.Swarm.LocalNodeState == "active" {
+		if info.Swarm.ControlAvailable {
+			slog.Info("running in swarm mode")
+			return NewSwarmUpdater(dockerClient, dockerClient), nil
+		}
+		return nil, fmt.Errorf("this node is a swarm worker, adze must run on a swarm manager")
+	}
+
+	slog.Info("running in compose mode")
+	return NewUpdater(composeService, dockerClient, ComposeProjectLoader{}), nil
 }
