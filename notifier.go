@@ -80,7 +80,9 @@ func (n *WebhookNotifier) send(ctx context.Context, payload notificationPayload)
 	}
 	resp.Body.Close()
 
+	slog.Debug("notification sent", "image", payload.Image, "target", payload.Target, "dir", payload.Dir, "status", payload.Status, "url", n.url, "response_code", resp.StatusCode)
+
 	if resp.StatusCode >= 300 {
-		slog.Error("notification webhook returned non-success status", "image", payload.Image, "target", payload.Target, "dir", payload.Dir, "url", n.url, "status", resp.StatusCode)
+		slog.Warn("notification webhook returned non-success status", "image", payload.Image, "target", payload.Target, "dir", payload.Dir, "url", n.url, "status", resp.StatusCode)
 	}
 }

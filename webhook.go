@@ -42,13 +42,13 @@ func (h *Handler) handleWebhook(w http.ResponseWriter, r *http.Request, skipSign
 	body, err := io.ReadAll(bodyReader)
 	defer bodyReader.Close()
 	if err != nil {
-		slog.Error("error reading body", "error", err)
+		slog.Warn("error reading body", "error", err)
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
 	if !skipSignature && !validateSignature(h.secrets, r.Header, body) {
-		slog.Warn("webhook signature validation failed")
+		slog.Warn("webhook signature validation failed", "remote", r.RemoteAddr)
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -56,7 +56,7 @@ func (h *Handler) handleWebhook(w http.ResponseWriter, r *http.Request, skipSign
 	payload := extractPayload(body, r.Header.Get("Content-Type"))
 	image := extractImage(payload)
 	if image == "" {
-		slog.Error("Payload doesn't match known image format.")
+		slog.Warn("Payload doesn't match known image format.")
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
@@ -78,6 +78,7 @@ func (h *Handler) handleWebhook(w http.ResponseWriter, r *http.Request, skipSign
 	}:
 		w.WriteHeader(http.StatusAccepted)
 	default:
+		slog.Warn("update queue full, dropping webhook", "image", image, "tag", tag, "source", r.URL.Path)
 		http.Error(w, "too many requests", http.StatusTooManyRequests)
 	}
 }

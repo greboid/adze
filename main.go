@@ -42,7 +42,7 @@ func newSlogWriter(stream string) io.Writer {
 
 func main() {
 	if err := run(); err != nil {
-		slog.Error(err.Error())
+		slog.Error("fatal error", "error", err)
 	}
 }
 
@@ -112,7 +112,7 @@ func run() error {
 		notifier = NewWebhookNotifier(*webhookURL, *webhookSecret)
 	}
 
-	updater, err := createUpdater(dockerClient, composeService, notifier, mode)
+	updater, err := createUpdater(dockerClient, composeService, notifier, mode, *addr)
 	if err != nil {
 		return err
 	}
@@ -139,7 +139,6 @@ func run() error {
 
 	serverErr := make(chan error, 1)
 	go func() {
-		slog.Info("listening", "addr", *addr)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			serverErr <- err
 		}
@@ -156,6 +155,7 @@ func run() error {
 	defer cancel()
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
+		slog.Debug("shutdown context expired", "error", err)
 		return fmt.Errorf("shutdown: %w", err)
 	}
 
@@ -165,7 +165,7 @@ func run() error {
 	return nil
 }
 
-func createUpdater(dockerClient *client.Client, composeService ComposeUpRunner, notifier Notifier, mode string) (ImageUpdater, error) {
+func createUpdater(dockerClient *client.Client, composeService ComposeUpRunner, notifier Notifier, mode string, addr string) (ImageUpdater, error) {
 	info, err := dockerClient.Info(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("getting docker info: %w", err)
@@ -175,12 +175,12 @@ func createUpdater(dockerClient *client.Client, composeService ComposeUpRunner, 
 
 	if info.Swarm.LocalNodeState == "active" {
 		if info.Swarm.ControlAvailable {
-			slog.Info("configuration", "docker", "swarm", "selection", mode)
+			slog.Info("configuration", "docker", "swarm", "selection", mode, "addr", addr)
 			return NewSwarmUpdater(dockerClient, dockerClient, notifier, includeOnly), nil
 		}
 		return nil, fmt.Errorf("this node is a swarm worker, adze must run on a swarm manager")
 	}
 
-	slog.Info("configuration", "docker", "compose", "selection", mode)
+	slog.Info("configuration", "docker", "compose", "selection", mode, "addr", addr)
 	return NewUpdater(composeService, dockerClient, ComposeProjectLoader{}, notifier, includeOnly), nil
 }

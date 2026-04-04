@@ -32,7 +32,7 @@ func (u *Updater) HandleUpdate(ctx context.Context, image string, tag string) er
 	}
 
 	if len(projects) == 0 {
-		slog.Info("no compose projects found", "image", image, "tag", tag, "project", "", "dir", "")
+		slog.Info("no compose projects found", "image", image, "tag", tag)
 		return nil
 	}
 
@@ -45,6 +45,7 @@ func (u *Updater) HandleUpdate(ctx context.Context, image string, tag string) er
 			u.notifier.NotifyResult(ctx, image, proj.ProjectName, proj.WorkingDir, err)
 			errs = append(errs, &ProjectUpdateError{Project: proj.ProjectName, Err: err})
 		} else {
+			slog.Info("updated compose project", "project", proj.ProjectName, "dir", proj.WorkingDir, "image", image, "tag", tag)
 			u.notifier.NotifyResult(ctx, image, proj.ProjectName, proj.WorkingDir, nil)
 		}
 	}
@@ -59,6 +60,8 @@ func (u *Updater) runUp(ctx context.Context, workingDir string, configFiles []st
 	if err != nil {
 		return fmt.Errorf("loading project: %w", err)
 	}
+
+	slog.Debug("loaded compose project", "project", project.Name, "services", len(project.Services))
 
 	for name, svc := range project.Services {
 		svc.PullPolicy = "always"
@@ -105,16 +108,20 @@ func (u *Updater) findComposeProjects(ctx context.Context, image string, tag str
 
 	for _, c := range containers {
 		if normalizeImage(c.Image) != normalizeImage(image) {
+			slog.Debug("skipping container, image mismatch", "container", c.Names, "container_image", normalizeImage(c.Image), "target_image", normalizeImage(image))
 			continue
 		}
 		if normalizeTag(extractImageTag(c.Image)) != normalizeTag(tag) {
+			slog.Debug("skipping container, tag mismatch", "container", c.Names, "container_tag", normalizeTag(extractImageTag(c.Image)), "target_tag", normalizeTag(tag))
 			continue
 		}
 		if u.includeOnly {
 			if _, included := c.Labels[includeLabel]; !included {
+				slog.Debug("skipping container, not included", "container", c.Names)
 				continue
 			}
 		} else if _, excluded := c.Labels[excludeLabel]; excluded {
+			slog.Debug("skipping container, excluded", "container", c.Names)
 			continue
 		}
 		workingDir := c.Labels[api.WorkingDirLabel]
@@ -122,10 +129,12 @@ func (u *Updater) findComposeProjects(ctx context.Context, image string, tag str
 		projectName := c.Labels[api.ProjectLabel]
 
 		if workingDir == "" || projectName == "" {
+			slog.Debug("skipping container, missing compose labels", "container", c.Names, "project", projectName, "dir", workingDir)
 			continue
 		}
 
 		if seen[projectName] {
+			slog.Debug("skipping container, project already seen", "container", c.Names, "project", projectName)
 			continue
 		}
 		seen[projectName] = true
@@ -146,7 +155,6 @@ func (u *Updater) updateProject(ctx context.Context, proj ComposeProject, image 
 		files = strings.Split(proj.ConfigFiles, ",")
 	}
 
-	slog.Info("updating services", "project", proj.ProjectName, "dir", proj.WorkingDir, "image", image, "tag", tag)
 	if err := u.runUp(ctx, proj.WorkingDir, files); err != nil {
 		return fmt.Errorf("up failed: %w", err)
 	}
