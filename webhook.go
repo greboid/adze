@@ -23,7 +23,7 @@ func (h *Handler) Shutdown() {
 
 func (h *Handler) processUpdates() {
 	for req := range h.updates {
-		if err := h.updater.HandleUpdate(req.ctx, req.image); err != nil {
+		if err := h.updater.HandleUpdate(req.ctx, req.image, req.tag); err != nil {
 			slog.Error("update failed", "error", err)
 		}
 	}
@@ -67,12 +67,14 @@ func (h *Handler) handleWebhook(w http.ResponseWriter, r *http.Request, skipSign
 		return
 	}
 
-	slog.Info("received webhook", "image", image, "source", r.URL.Path)
+	tag := extractTag(payload)
+	slog.Info("received webhook", "image", image, "tag", tag, "source", r.URL.Path)
 
 	select {
 	case h.updates <- updateRequest{
 		ctx:   context.WithoutCancel(r.Context()),
 		image: image,
+		tag:   tag,
 	}:
 		w.WriteHeader(http.StatusAccepted)
 	default:

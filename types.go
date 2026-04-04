@@ -50,7 +50,7 @@ func (noopNotifier) NotifyPending(_ context.Context, _ string, _ string) {}
 func (noopNotifier) NotifyResult(_ context.Context, _ string, _ string, _ error) {}
 
 type ImageUpdater interface {
-	HandleUpdate(ctx context.Context, image string) error
+	HandleUpdate(ctx context.Context, image string, tag string) error
 }
 
 type Updater struct {
@@ -58,6 +58,7 @@ type Updater struct {
 	dockerClient   ContainerLister
 	projectLoader  ProjectLoader
 	notifier       Notifier
+	includeOnly    bool
 }
 
 type ComposeProject struct {
@@ -104,13 +105,15 @@ type webhookPayload struct {
 		} `json:"owner"`
 		Type        string `json:"type"`
 		PackageType string `json:"package_type"`
-		Name        string `json:"name"`
+		Name           string `json:"name"`
+		PackageVersion string `json:"package_version"`
 	} `json:"package"`
 	Events []struct {
 		Action string `json:"action"`
 		Target struct {
 			Repository string `json:"repository"`
 			MediaType  string `json:"mediaType"`
+			Tag        string `json:"tag"`
 		} `json:"target"`
 		Request struct {
 			Host string `json:"host"`
@@ -121,6 +124,7 @@ type webhookPayload struct {
 type updateRequest struct {
 	ctx   context.Context
 	image string
+	tag   string
 }
 
 type Handler struct {

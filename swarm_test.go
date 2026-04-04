@@ -41,9 +41,9 @@ func TestSwarmHandleUpdate_NoMatch(t *testing.T) {
 		},
 	}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up, noopNotifier{})
+	u := NewSwarmUpdater(lister, up, noopNotifier{}, false)
 
-	err := u.HandleUpdate(context.Background(), "myapp:latest")
+	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -59,9 +59,9 @@ func TestSwarmHandleUpdate_MatchingService(t *testing.T) {
 		},
 	}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up, noopNotifier{})
+	u := NewSwarmUpdater(lister, up, noopNotifier{}, false)
 
-	err := u.HandleUpdate(context.Background(), "myapp:latest")
+	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -87,9 +87,9 @@ func TestSwarmHandleUpdate_MultipleMatchingServices(t *testing.T) {
 		},
 	}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up, noopNotifier{})
+	u := NewSwarmUpdater(lister, up, noopNotifier{}, false)
 
-	err := u.HandleUpdate(context.Background(), "myapp:latest")
+	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -110,9 +110,9 @@ func TestSwarmHandleUpdate_UpdateError(t *testing.T) {
 	}
 	upErr := fmt.Errorf("update failed")
 	up := &mockServiceUpdater{err: upErr}
-	u := NewSwarmUpdater(lister, up, noopNotifier{})
+	u := NewSwarmUpdater(lister, up, noopNotifier{}, false)
 
-	err := u.HandleUpdate(context.Background(), "myapp:latest")
+	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -154,9 +154,9 @@ func TestSwarmHandleUpdate_NilContainerSpec(t *testing.T) {
 		},
 	}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up, noopNotifier{})
+	u := NewSwarmUpdater(lister, up, noopNotifier{}, false)
 
-	err := u.HandleUpdate(context.Background(), "myapp:latest")
+	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -168,9 +168,9 @@ func TestSwarmHandleUpdate_NilContainerSpec(t *testing.T) {
 func TestSwarmHandleUpdate_ServiceListError(t *testing.T) {
 	lister := &mockServiceLister{err: fmt.Errorf("docker error")}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up, noopNotifier{})
+	u := NewSwarmUpdater(lister, up, noopNotifier{}, false)
 
-	err := u.HandleUpdate(context.Background(), "myapp:latest")
+	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -183,9 +183,9 @@ func TestSwarmHandleUpdate_ForceUpdateIncrements(t *testing.T) {
 		},
 	}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up, noopNotifier{})
+	u := NewSwarmUpdater(lister, up, noopNotifier{}, false)
 
-	err := u.HandleUpdate(context.Background(), "myapp:latest")
+	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -201,9 +201,9 @@ func TestSwarmHandleUpdate_ImageNormalization(t *testing.T) {
 		},
 	}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up, noopNotifier{})
+	u := NewSwarmUpdater(lister, up, noopNotifier{}, false)
 
-	err := u.HandleUpdate(context.Background(), "myapp:v2.0")
+	err := u.HandleUpdate(context.Background(), "myapp:v2.0", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -221,9 +221,9 @@ func TestSwarmHandleUpdate_ExcludedService(t *testing.T) {
 		},
 	}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up, noopNotifier{})
+	u := NewSwarmUpdater(lister, up, noopNotifier{}, false)
 
-	err := u.HandleUpdate(context.Background(), "myapp:latest")
+	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -242,9 +242,9 @@ func TestSwarmHandleUpdate_ExcludedDoesNotAffectOthers(t *testing.T) {
 		},
 	}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up, noopNotifier{})
+	u := NewSwarmUpdater(lister, up, noopNotifier{}, false)
 
-	err := u.HandleUpdate(context.Background(), "myapp:latest")
+	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -253,5 +253,140 @@ func TestSwarmHandleUpdate_ExcludedDoesNotAffectOthers(t *testing.T) {
 	}
 	if up.serviceID != "svc2" {
 		t.Errorf("expected serviceID svc2, got %s", up.serviceID)
+	}
+}
+
+func TestSwarmHandleUpdate_IncludeOnly_SkipsUnlabelled(t *testing.T) {
+	lister := &mockServiceLister{
+		services: []swarm.Service{
+			makeService("svc1", "myapp_web", "myapp:latest", 1, 0),
+		},
+	}
+	up := &mockServiceUpdater{}
+	u := NewSwarmUpdater(lister, up, noopNotifier{}, true)
+
+	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if up.called.Load() {
+		t.Error("expected ServiceUpdate not to be called without include label")
+	}
+}
+
+func TestSwarmHandleUpdate_IncludeOnly_IncludesLabelled(t *testing.T) {
+	lister := &mockServiceLister{
+		services: []swarm.Service{
+			makeServiceWithLabels("svc1", "myapp_web", "myapp:latest", 1, 0, map[string]string{
+				includeLabel: "true",
+			}),
+		},
+	}
+	up := &mockServiceUpdater{}
+	u := NewSwarmUpdater(lister, up, noopNotifier{}, true)
+
+	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !up.called.Load() {
+		t.Fatal("expected ServiceUpdate to be called for included service")
+	}
+}
+
+func TestSwarmHandleUpdate_IncludeOnly_IgnoresExcludeLabel(t *testing.T) {
+	lister := &mockServiceLister{
+		services: []swarm.Service{
+			makeServiceWithLabels("svc1", "myapp_web", "myapp:latest", 1, 0, map[string]string{
+				includeLabel: "true",
+				excludeLabel: "true",
+			}),
+		},
+	}
+	up := &mockServiceUpdater{}
+	u := NewSwarmUpdater(lister, up, noopNotifier{}, true)
+
+	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !up.called.Load() {
+		t.Fatal("expected ServiceUpdate to be called (include overrides exclude)")
+	}
+}
+
+func TestSwarmHandleUpdate_TagMatch(t *testing.T) {
+	lister := &mockServiceLister{
+		services: []swarm.Service{
+			makeService("svc1", "myapp_web", "myapp:latest", 1, 0),
+		},
+	}
+	up := &mockServiceUpdater{}
+	u := NewSwarmUpdater(lister, up, noopNotifier{}, false)
+
+	err := u.HandleUpdate(context.Background(), "myapp", "latest")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !up.called.Load() {
+		t.Error("expected ServiceUpdate to be called for matching tag")
+	}
+}
+
+func TestSwarmHandleUpdate_TagMismatch(t *testing.T) {
+	lister := &mockServiceLister{
+		services: []swarm.Service{
+			makeService("svc1", "myapp_web", "myapp:latest", 1, 0),
+		},
+	}
+	up := &mockServiceUpdater{}
+	u := NewSwarmUpdater(lister, up, noopNotifier{}, false)
+
+	err := u.HandleUpdate(context.Background(), "myapp", "dev")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if up.called.Load() {
+		t.Error("expected ServiceUpdate not to be called for non-matching tag")
+	}
+}
+
+func TestSwarmHandleUpdate_UntaggedMatchesLatest(t *testing.T) {
+	lister := &mockServiceLister{
+		services: []swarm.Service{
+			makeService("svc1", "myapp_web", "myapp", 1, 0),
+		},
+	}
+	up := &mockServiceUpdater{}
+	u := NewSwarmUpdater(lister, up, noopNotifier{}, false)
+
+	err := u.HandleUpdate(context.Background(), "myapp", "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !up.called.Load() {
+		t.Error("expected ServiceUpdate to be called (untagged=latest matches empty=latest)")
+	}
+}
+
+func TestSwarmHandleUpdate_TagFilterAcrossServices(t *testing.T) {
+	lister := &mockServiceLister{
+		services: []swarm.Service{
+			makeService("svc1", "myapp_dev", "myapp:dev", 1, 0),
+			makeService("svc2", "myapp_prod", "myapp:latest", 2, 0),
+		},
+	}
+	up := &mockServiceUpdater{}
+	u := NewSwarmUpdater(lister, up, noopNotifier{}, false)
+
+	err := u.HandleUpdate(context.Background(), "myapp", "dev")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !up.called.Load() {
+		t.Fatal("expected ServiceUpdate to be called")
+	}
+	if up.serviceID != "svc1" {
+		t.Errorf("expected serviceID svc1 (dev), got %s", up.serviceID)
 	}
 }

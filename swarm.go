@@ -12,17 +12,19 @@ type SwarmUpdater struct {
 	serviceLister  ServiceLister
 	serviceUpdater ServiceUpdater
 	notifier       Notifier
+	includeOnly    bool
 }
 
-func NewSwarmUpdater(serviceLister ServiceLister, serviceUpdater ServiceUpdater, notifier Notifier) *SwarmUpdater {
+func NewSwarmUpdater(serviceLister ServiceLister, serviceUpdater ServiceUpdater, notifier Notifier, includeOnly bool) *SwarmUpdater {
 	return &SwarmUpdater{
 		serviceLister:  serviceLister,
 		serviceUpdater: serviceUpdater,
 		notifier:       notifier,
+		includeOnly:    includeOnly,
 	}
 }
 
-func (u *SwarmUpdater) HandleUpdate(ctx context.Context, image string) error {
+func (u *SwarmUpdater) HandleUpdate(ctx context.Context, image string, tag string) error {
 	services, err := u.serviceLister.ServiceList(ctx, swarm.ServiceListOptions{})
 	if err != nil {
 		return fmt.Errorf("listing swarm services: %w", err)
@@ -36,7 +38,14 @@ func (u *SwarmUpdater) HandleUpdate(ctx context.Context, image string) error {
 		if normalizeImage(svc.Spec.TaskTemplate.ContainerSpec.Image) != normalizeImage(image) {
 			continue
 		}
-		if _, excluded := svc.Spec.Labels[excludeLabel]; excluded {
+		if normalizeTag(extractImageTag(svc.Spec.TaskTemplate.ContainerSpec.Image)) != normalizeTag(tag) {
+			continue
+		}
+		if u.includeOnly {
+			if _, included := svc.Spec.Labels[includeLabel]; !included {
+				continue
+			}
+		} else if _, excluded := svc.Spec.Labels[excludeLabel]; excluded {
 			continue
 		}
 

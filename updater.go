@@ -13,24 +13,26 @@ import (
 )
 
 const excludeLabel = "com.greboid.adze.excluded"
+const includeLabel = "com.greboid.adze.included"
 
-func NewUpdater(composeService ComposeUpRunner, dockerClient ContainerLister, projectLoader ProjectLoader, notifier Notifier) *Updater {
+func NewUpdater(composeService ComposeUpRunner, dockerClient ContainerLister, projectLoader ProjectLoader, notifier Notifier, includeOnly bool) *Updater {
 	return &Updater{
 		composeService: composeService,
 		dockerClient:   dockerClient,
 		projectLoader:  projectLoader,
 		notifier:       notifier,
+		includeOnly:    includeOnly,
 	}
 }
 
-func (u *Updater) HandleUpdate(ctx context.Context, image string) error {
-	projects, err := u.findComposeProjects(ctx, image)
+func (u *Updater) HandleUpdate(ctx context.Context, image string, tag string) error {
+	projects, err := u.findComposeProjects(ctx, image, tag)
 	if err != nil {
 		return fmt.Errorf("finding compose projects: %w", err)
 	}
 
 	if len(projects) == 0 {
-		slog.Info("no compose projects found", "image", image)
+		slog.Info("no compose projects found", "image", image, "tag", tag)
 		return nil
 	}
 
@@ -87,7 +89,7 @@ func (u *Updater) runUp(ctx context.Context, workingDir string, configFiles []st
 	return nil
 }
 
-func (u *Updater) findComposeProjects(ctx context.Context, image string) ([]ComposeProject, error) {
+func (u *Updater) findComposeProjects(ctx context.Context, image string, tag string) ([]ComposeProject, error) {
 	containers, err := u.dockerClient.ContainerList(ctx, container.ListOptions{
 		Filters: filters.NewArgs(filters.KeyValuePair{
 			Key:   "status",
@@ -105,7 +107,14 @@ func (u *Updater) findComposeProjects(ctx context.Context, image string) ([]Comp
 		if normalizeImage(c.Image) != normalizeImage(image) {
 			continue
 		}
-		if _, excluded := c.Labels[excludeLabel]; excluded {
+		if normalizeTag(extractImageTag(c.Image)) != normalizeTag(tag) {
+			continue
+		}
+		if u.includeOnly {
+			if _, included := c.Labels[includeLabel]; !included {
+				continue
+			}
+		} else if _, excluded := c.Labels[excludeLabel]; excluded {
 			continue
 		}
 		workingDir := c.Labels[api.WorkingDirLabel]

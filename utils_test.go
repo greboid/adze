@@ -295,3 +295,78 @@ func TestExtractPayload(t *testing.T) {
 		})
 	}
 }
+
+func TestExtractImageTag(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"myimage", "latest"},
+		{"myimage:latest", "latest"},
+		{"myimage:v1", "v1"},
+		{"myimage:dev", "dev"},
+		{"myimage@sha256:abc123", "latest"},
+		{"myimage:v1@sha256:abc123", "v1"},
+		{"registry.example.com/myimage", "latest"},
+		{"registry.example.com/myimage:latest", "latest"},
+		{"registry.example.com/myimage:v2", "v2"},
+		{"registry.example.com/myimage:v1@sha256:deadbeef", "v1"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			result := extractImageTag(tt.input)
+			if result != tt.expected {
+				t.Errorf("extractImageTag(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestExtractTag(t *testing.T) {
+	tests := []struct {
+		name     string
+		body     string
+		expected string
+	}{
+		{"docker registry with tag", `{"events":[{"action":"push","target":{"repository":"myorg/myapp","tag":"v1","mediaType":"application/vnd.docker.distribution.manifest.v2+json"}}]}`, "v1"},
+		{"docker registry no tag", `{"events":[{"action":"push","target":{"repository":"myorg/myapp","mediaType":"application/vnd.docker.distribution.manifest.v2+json"}}]}`, ""},
+		{"docker registry empty tag", `{"events":[{"action":"push","target":{"repository":"myorg/myapp","tag":"","mediaType":"application/vnd.docker.distribution.manifest.v2+json"}}]}`, ""},
+		{"forgejo with version", `{"package":{"owner":{"login":"myorg","html_url":"https://git.example.com/myorg"},"type":"container","name":"myapp","package_version":"2.1.0"}}`, "2.1.0"},
+		{"forgejo no version", `{"package":{"owner":{"login":"myorg"},"type":"container","name":"myapp"}}`, ""},
+		{"github with version", `{"action":"published","package":{"owner":{"login":"myorg"},"package_type":"CONTAINER","name":"myapp","package_version":"1.0.0"}}`, "1.0.0"},
+		{"generic image", `{"image":"myregistry/myapp"}`, ""},
+		{"empty body", `{}`, ""},
+		{"malformed", `not json`, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := extractTag([]byte(tt.body))
+			if result != tt.expected {
+				t.Errorf("extractTag() = %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestNormalizeTag(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"", "latest"},
+		{"latest", "latest"},
+		{"v1", "v1"},
+		{"dev", "dev"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			result := normalizeTag(tt.input)
+			if result != tt.expected {
+				t.Errorf("normalizeTag(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}

@@ -138,6 +138,40 @@ func normalizeImage(ref string) string {
 	return ref
 }
 
+func extractImageTag(ref string) string {
+	if strings.Contains(ref, "@") {
+		ref = strings.SplitN(ref, "@", 2)[0]
+	}
+	if strings.Contains(ref, ":") {
+		return strings.SplitN(ref, ":", 2)[1]
+	}
+	return "latest"
+}
+
+func extractTag(body []byte) string {
+	var p webhookPayload
+	if err := json.Unmarshal(body, &p); err != nil {
+		return ""
+	}
+	if p.Package.Owner.Login != "" && p.Package.Name != "" &&
+		(p.Package.Type == "container" || p.Package.PackageType == "CONTAINER") {
+		return p.Package.PackageVersion
+	}
+	for _, event := range p.Events {
+		if event.Target.Tag != "" {
+			return event.Target.Tag
+		}
+	}
+	return ""
+}
+
+func normalizeTag(tag string) string {
+	if tag == "" {
+		return "latest"
+	}
+	return tag
+}
+
 type ComposeProjectLoader struct{}
 
 func (l ComposeProjectLoader) LoadProject(ctx context.Context, workingDir string, configFiles []string) (*composetypes.Project, error) {
