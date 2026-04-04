@@ -12,11 +12,12 @@ import (
 	"github.com/docker/docker/api/types/filters"
 )
 
-func NewUpdater(composeService ComposeUpRunner, dockerClient ContainerLister, projectLoader ProjectLoader) *Updater {
+func NewUpdater(composeService ComposeUpRunner, dockerClient ContainerLister, projectLoader ProjectLoader, notifier Notifier) *Updater {
 	return &Updater{
 		composeService: composeService,
 		dockerClient:   dockerClient,
 		projectLoader:  projectLoader,
+		notifier:       notifier,
 	}
 }
 
@@ -34,9 +35,13 @@ func (u *Updater) HandleUpdate(ctx context.Context, image string) error {
 	var errs []error
 	for _, proj := range projects {
 		slog.Info("updating compose project", "project", proj.ProjectName, "dir", proj.WorkingDir, "config", proj.ConfigFiles)
+		u.notifier.NotifyPending(ctx, image, proj.ProjectName)
 		if err := u.updateProject(ctx, proj); err != nil {
 			slog.Error("failed to update project", "project", proj.ProjectName, "error", err)
+			u.notifier.NotifyResult(ctx, image, proj.ProjectName, err)
 			errs = append(errs, &ProjectUpdateError{Project: proj.ProjectName, Err: err})
+		} else {
+			u.notifier.NotifyResult(ctx, image, proj.ProjectName, nil)
 		}
 	}
 	if len(errs) > 0 {

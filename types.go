@@ -31,6 +31,24 @@ type ServiceUpdater interface {
 	ServiceUpdate(ctx context.Context, serviceID string, version swarm.Version, spec swarm.ServiceSpec, options swarm.ServiceUpdateOptions) (swarm.ServiceUpdateResponse, error)
 }
 
+type notificationPayload struct {
+	Image  string `json:"image"`
+	Target string `json:"target"`
+	Status string `json:"status"`
+	Error  string `json:"error,omitempty"`
+}
+
+type Notifier interface {
+	NotifyPending(ctx context.Context, image string, target string)
+	NotifyResult(ctx context.Context, image string, target string, err error)
+}
+
+type noopNotifier struct{}
+
+func (noopNotifier) NotifyPending(_ context.Context, _ string, _ string) {}
+
+func (noopNotifier) NotifyResult(_ context.Context, _ string, _ string, _ error) {}
+
 type ImageUpdater interface {
 	HandleUpdate(ctx context.Context, image string) error
 }
@@ -39,6 +57,7 @@ type Updater struct {
 	composeService ComposeUpRunner
 	dockerClient   ContainerLister
 	projectLoader  ProjectLoader
+	notifier       Notifier
 }
 
 type ComposeProject struct {

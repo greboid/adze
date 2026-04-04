@@ -11,12 +11,14 @@ import (
 type SwarmUpdater struct {
 	serviceLister  ServiceLister
 	serviceUpdater ServiceUpdater
+	notifier       Notifier
 }
 
-func NewSwarmUpdater(serviceLister ServiceLister, serviceUpdater ServiceUpdater) *SwarmUpdater {
+func NewSwarmUpdater(serviceLister ServiceLister, serviceUpdater ServiceUpdater, notifier Notifier) *SwarmUpdater {
 	return &SwarmUpdater{
 		serviceLister:  serviceLister,
 		serviceUpdater: serviceUpdater,
+		notifier:       notifier,
 	}
 }
 
@@ -39,13 +41,17 @@ func (u *SwarmUpdater) HandleUpdate(ctx context.Context, image string) error {
 		spec := svc.Spec
 		spec.TaskTemplate.ForceUpdate++
 
+		u.notifier.NotifyPending(ctx, image, svc.Spec.Name)
 		if _, err := u.serviceUpdater.ServiceUpdate(ctx, svc.ID, svc.Version, spec, swarm.ServiceUpdateOptions{}); err != nil {
 			slog.Error("failed to update swarm service", "service", svc.Spec.Name, "id", svc.ID, "error", err)
+			u.notifier.NotifyResult(ctx, image, svc.Spec.Name, err)
 			errs = append(errs, &ServiceUpdateError{
 				ServiceName: svc.Spec.Name,
 				ServiceID:   svc.ID,
 				Err:         err,
 			})
+		} else {
+			u.notifier.NotifyResult(ctx, image, svc.Spec.Name, nil)
 		}
 	}
 

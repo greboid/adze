@@ -32,6 +32,8 @@ func run() error {
 	addr := flag.String("addr", ":8080", "address to listen on")
 	secret := flag.String("secret", "", "shared secret(s) for webhook signatures, comma-separated (required)")
 	dangerEndpoints := flag.Int("danger-endpoints", 0, "number of unauthenticated webhook endpoints to generate")
+	webhookURL := flag.String("webhook-url", "", "URL to send notifications to when updates succeed or fail")
+	webhookSecret := flag.String("webhook-secret", "", "secret for signing outgoing notification webhooks")
 
 	envflag.Parse()
 
@@ -66,7 +68,12 @@ func run() error {
 		return fmt.Errorf("creating docker client: %w", err)
 	}
 
-	updater, err := createUpdater(dockerClient, composeService)
+	var notifier Notifier = noopNotifier{}
+	if *webhookURL != "" {
+		notifier = NewWebhookNotifier(*webhookURL, *webhookSecret)
+	}
+
+	updater, err := createUpdater(dockerClient, composeService, notifier)
 	if err != nil {
 		return err
 	}
@@ -119,7 +126,7 @@ func run() error {
 	return nil
 }
 
-func createUpdater(dockerClient *client.Client, composeService ComposeUpRunner) (ImageUpdater, error) {
+func createUpdater(dockerClient *client.Client, composeService ComposeUpRunner, notifier Notifier) (ImageUpdater, error) {
 	info, err := dockerClient.Info(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("getting docker info: %w", err)
@@ -128,11 +135,11 @@ func createUpdater(dockerClient *client.Client, composeService ComposeUpRunner) 
 	if info.Swarm.LocalNodeState == "active" {
 		if info.Swarm.ControlAvailable {
 			slog.Info("running in swarm mode")
-			return NewSwarmUpdater(dockerClient, dockerClient), nil
+			return NewSwarmUpdater(dockerClient, dockerClient, notifier), nil
 		}
 		return nil, fmt.Errorf("this node is a swarm worker, adze must run on a swarm manager")
 	}
 
 	slog.Info("running in compose mode")
-	return NewUpdater(composeService, dockerClient, ComposeProjectLoader{}), nil
+	return NewUpdater(composeService, dockerClient, ComposeProjectLoader{}, notifier), nil
 }

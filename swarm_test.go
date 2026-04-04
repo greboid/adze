@@ -36,7 +36,7 @@ func TestSwarmHandleUpdate_NoMatch(t *testing.T) {
 		},
 	}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up)
+	u := NewSwarmUpdater(lister, up, noopNotifier{})
 
 	err := u.HandleUpdate(context.Background(), "myapp:latest")
 	if err != nil {
@@ -54,7 +54,7 @@ func TestSwarmHandleUpdate_MatchingService(t *testing.T) {
 		},
 	}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up)
+	u := NewSwarmUpdater(lister, up, noopNotifier{})
 
 	err := u.HandleUpdate(context.Background(), "myapp:latest")
 	if err != nil {
@@ -82,7 +82,7 @@ func TestSwarmHandleUpdate_MultipleMatchingServices(t *testing.T) {
 		},
 	}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up)
+	u := NewSwarmUpdater(lister, up, noopNotifier{})
 
 	err := u.HandleUpdate(context.Background(), "myapp:latest")
 	if err != nil {
@@ -105,7 +105,7 @@ func TestSwarmHandleUpdate_UpdateError(t *testing.T) {
 	}
 	upErr := fmt.Errorf("update failed")
 	up := &mockServiceUpdater{err: upErr}
-	u := NewSwarmUpdater(lister, up)
+	u := NewSwarmUpdater(lister, up, noopNotifier{})
 
 	err := u.HandleUpdate(context.Background(), "myapp:latest")
 	if err == nil {
@@ -149,7 +149,7 @@ func TestSwarmHandleUpdate_NilContainerSpec(t *testing.T) {
 		},
 	}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up)
+	u := NewSwarmUpdater(lister, up, noopNotifier{})
 
 	err := u.HandleUpdate(context.Background(), "myapp:latest")
 	if err != nil {
@@ -163,7 +163,7 @@ func TestSwarmHandleUpdate_NilContainerSpec(t *testing.T) {
 func TestSwarmHandleUpdate_ServiceListError(t *testing.T) {
 	lister := &mockServiceLister{err: fmt.Errorf("docker error")}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up)
+	u := NewSwarmUpdater(lister, up, noopNotifier{})
 
 	err := u.HandleUpdate(context.Background(), "myapp:latest")
 	if err == nil {
@@ -178,7 +178,7 @@ func TestSwarmHandleUpdate_ForceUpdateIncrements(t *testing.T) {
 		},
 	}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up)
+	u := NewSwarmUpdater(lister, up, noopNotifier{})
 
 	err := u.HandleUpdate(context.Background(), "myapp:latest")
 	if err != nil {
@@ -196,7 +196,7 @@ func TestSwarmHandleUpdate_ImageNormalization(t *testing.T) {
 		},
 	}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up)
+	u := NewSwarmUpdater(lister, up, noopNotifier{})
 
 	err := u.HandleUpdate(context.Background(), "myapp:v2.0")
 	if err != nil {
