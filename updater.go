@@ -32,20 +32,20 @@ func (u *Updater) HandleUpdate(ctx context.Context, image string, tag string) er
 	}
 
 	if len(projects) == 0 {
-		slog.Info("no compose projects found", "image", image, "tag", tag, "project", "")
+		slog.Info("no compose projects found", "image", image, "tag", tag, "project", "", "dir", "")
 		return nil
 	}
 
 	var errs []error
 	for _, proj := range projects {
-		slog.Info("updating compose project", "project", proj.ProjectName, "image", image, "tag", tag, "dir", proj.WorkingDir, "config", proj.ConfigFiles)
-		u.notifier.NotifyPending(ctx, image, proj.ProjectName)
+		slog.Info("updating compose project", "project", proj.ProjectName, "dir", proj.WorkingDir, "image", image, "tag", tag, "config", proj.ConfigFiles)
+		u.notifier.NotifyPending(ctx, image, proj.ProjectName, proj.WorkingDir)
 		if err := u.updateProject(ctx, proj, image, tag); err != nil {
-			slog.Error("failed to update project", "project", proj.ProjectName, "image", image, "tag", tag, "error", err)
-			u.notifier.NotifyResult(ctx, image, proj.ProjectName, err)
+			slog.Error("failed to update project", "project", proj.ProjectName, "dir", proj.WorkingDir, "image", image, "tag", tag, "error", err)
+			u.notifier.NotifyResult(ctx, image, proj.ProjectName, proj.WorkingDir, err)
 			errs = append(errs, &ProjectUpdateError{Project: proj.ProjectName, Err: err})
 		} else {
-			u.notifier.NotifyResult(ctx, image, proj.ProjectName, nil)
+			u.notifier.NotifyResult(ctx, image, proj.ProjectName, proj.WorkingDir, nil)
 		}
 	}
 	if len(errs) > 0 {
@@ -146,7 +146,7 @@ func (u *Updater) updateProject(ctx context.Context, proj ComposeProject, image 
 		files = strings.Split(proj.ConfigFiles, ",")
 	}
 
-	slog.Info("updating services", "project", proj.ProjectName, "image", image, "tag", tag)
+	slog.Info("updating services", "project", proj.ProjectName, "dir", proj.WorkingDir, "image", image, "tag", tag)
 	if err := u.runUp(ctx, proj.WorkingDir, files); err != nil {
 		return fmt.Errorf("up failed: %w", err)
 	}

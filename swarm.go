@@ -53,17 +53,17 @@ func (u *SwarmUpdater) HandleUpdate(ctx context.Context, image string, tag strin
 		spec := svc.Spec
 		spec.TaskTemplate.ForceUpdate++
 
-		u.notifier.NotifyPending(ctx, image, svc.Spec.Name)
+		u.notifier.NotifyPending(ctx, image, svc.Spec.Name, "")
 		if _, err := u.serviceUpdater.ServiceUpdate(ctx, svc.ID, svc.Version, spec, swarm.ServiceUpdateOptions{}); err != nil {
 			slog.Error("failed to update swarm service", "service", svc.Spec.Name, "image", image, "tag", tag, "id", svc.ID, "error", err)
-			u.notifier.NotifyResult(ctx, image, svc.Spec.Name, err)
+			u.notifier.NotifyResult(ctx, image, svc.Spec.Name, "", err)
 			errs = append(errs, &ServiceUpdateError{
 				ServiceName: svc.Spec.Name,
 				ServiceID:   svc.ID,
 				Err:         err,
 			})
 		} else {
-			u.notifier.NotifyResult(ctx, image, svc.Spec.Name, nil)
+			u.notifier.NotifyResult(ctx, image, svc.Spec.Name, "", nil)
 		}
 	}
 

@@ -34,19 +34,20 @@ type ServiceUpdater interface {
 type notificationPayload struct {
 	Image  string `json:"image"`
 	Target string `json:"target"`
+	Dir    string `json:"dir,omitempty"`
 	Status string `json:"status"`
 	Error  string `json:"error,omitempty"`
 }
 
 type Notifier interface {
-	NotifyPending(ctx context.Context, image string, target string)
-	NotifyResult(ctx context.Context, image string, target string, err error)
+	NotifyPending(ctx context.Context, image string, target string, dir string)
+	NotifyResult(ctx context.Context, image string, target string, dir string, err error)
 }
 
 type noopNotifier struct{}
 
-func (noopNotifier) NotifyPending(_ context.Context, _ string, _ string) {}
-func (noopNotifier) NotifyResult(_ context.Context, _ string, _ string, _ error) {}
+func (noopNotifier) NotifyPending(_ context.Context, _ string, _ string, _ string)         {}
+func (noopNotifier) NotifyResult(_ context.Context, _ string, _ string, _ string, _ error) {}
 
 type ImageUpdater interface {
 	HandleUpdate(ctx context.Context, image string, tag string) error
@@ -102,10 +103,10 @@ type webhookPayload struct {
 			Login   string `json:"login"`
 			HTMLURL string `json:"html_url"`
 		} `json:"owner"`
-		Type        string `json:"type"`
-		PackageType string `json:"package_type"`
-		Name    string `json:"name"`
-		Version string `json:"version"`
+		Type           string `json:"type"`
+		PackageType    string `json:"package_type"`
+		Name           string `json:"name"`
+		Version        string `json:"version"`
 		PackageVersion struct {
 			ContainerMetadata struct {
 				Tag struct {
