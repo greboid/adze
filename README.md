@@ -13,8 +13,7 @@ Works with Forgejo and Gitea container registry webhooks out of the box, or anyt
 | `-addr` | `ADDR` | `:8080` | Address to listen on |
 | `-secret` | `SECRET` | (required) | Shared secret(s) for webhook signatures, comma-separated |
 | `-danger-endpoints` | `DANGER_ENDPOINTS` | `0` | Number of unauthenticated webhook endpoints to generate |
-
-If your registry requires authentication, mount `~/.docker` or set `DOCKER_CONFIG` to point to a directory containing your Docker config.
+| `-docker-config` | `DOCKER_CONFIG` | `/root/.docker` | Path to the docker config directory inside the container (used to load docker credentials) |
 
 ### Unauthenticated endpoints
 
