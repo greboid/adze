@@ -70,7 +70,7 @@ func run() error {
 	if *includeOnly {
 		mode = "include"
 	}
-	slog.Info("starting adze", "version", version(), "mode", mode)
+	slog.Info("starting adze", "version", version())
 
 	secrets := strings.Split(*secret, ",")
 	for i := range secrets {
@@ -112,7 +112,7 @@ func run() error {
 		notifier = NewWebhookNotifier(*webhookURL, *webhookSecret)
 	}
 
-	updater, err := createUpdater(dockerClient, composeService, notifier, *includeOnly)
+	updater, err := createUpdater(dockerClient, composeService, notifier, mode)
 	if err != nil {
 		return err
 	}
@@ -165,20 +165,22 @@ func run() error {
 	return nil
 }
 
-func createUpdater(dockerClient *client.Client, composeService ComposeUpRunner, notifier Notifier, includeOnly bool) (ImageUpdater, error) {
+func createUpdater(dockerClient *client.Client, composeService ComposeUpRunner, notifier Notifier, mode string) (ImageUpdater, error) {
 	info, err := dockerClient.Info(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("getting docker info: %w", err)
 	}
 
+	includeOnly := mode == "include"
+
 	if info.Swarm.LocalNodeState == "active" {
 		if info.Swarm.ControlAvailable {
-			slog.Info("running in swarm mode")
+			slog.Info("configuration", "docker", "swarm", "selection", mode)
 			return NewSwarmUpdater(dockerClient, dockerClient, notifier, includeOnly), nil
 		}
 		return nil, fmt.Errorf("this node is a swarm worker, adze must run on a swarm manager")
 	}
 
-	slog.Info("running in compose mode")
+	slog.Info("configuration", "docker", "compose", "selection", mode)
 	return NewUpdater(composeService, dockerClient, ComposeProjectLoader{}, notifier, includeOnly), nil
 }
