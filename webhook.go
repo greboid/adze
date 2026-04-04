@@ -24,7 +24,7 @@ func (h *Handler) Shutdown() {
 func (h *Handler) processUpdates() {
 	for req := range h.updates {
 		if err := h.updater.HandleUpdate(req.ctx, req.image, req.tag); err != nil {
-			slog.Error("update failed", "error", err)
+			slog.Error("update failed", "image", req.image, "tag", req.tag, "error", err)
 		}
 	}
 }

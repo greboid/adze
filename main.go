@@ -3,18 +3,22 @@ package main
 import (
 	"context"
 	"errors"
+	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"slices"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/csmith/envflag/v2"
+	"github.com/csmith/slogflags"
 	"github.com/docker/cli/cli/command"
 	"github.com/docker/cli/cli/config"
 	cliflags "github.com/docker/cli/cli/flags"
@@ -22,10 +26,32 @@ import (
 	"github.com/docker/docker/client"
 )
 
+// newSlogWriter returns an io.Writer that logs each line via slog.Debug in a background goroutine.
+func newSlogWriter(stream string) io.Writer {
+	r, w := io.Pipe()
+	go func() {
+		scanner := bufio.NewScanner(r)
+		for scanner.Scan() {
+			if line := scanner.Text(); line != "" {
+				slog.Debug(line, "stream", stream)
+			}
+		}
+	}()
+	return w
+}
+
 func main() {
 	if err := run(); err != nil {
 		slog.Error(err.Error())
 	}
+}
+
+func version() string {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return "dev"
+	}
+	return info.Main.Version
 }
 
 func run() error {
@@ -37,6 +63,10 @@ func run() error {
 	includeOnly := flag.Bool("include-only", false, "only update containers/services with the include label")
 
 	envflag.Parse()
+
+	_ = slogflags.Logger(slogflags.WithSetDefault(true))
+
+	slog.Info("starting adze", "version", version())
 
 	secrets := strings.Split(*secret, ",")
 	for i := range secrets {
@@ -55,7 +85,10 @@ func run() error {
 		opts.ConfigDir = config.Dir()
 	}
 
-	dockerCli, err := command.NewDockerCli()
+	dockerCli, err := command.NewDockerCli(
+		command.WithOutputStream(newSlogWriter("stdout")),
+		command.WithErrorStream(newSlogWriter("stderr")),
+	)
 	if err != nil {
 		return fmt.Errorf("creating docker cli: %w", err)
 	}

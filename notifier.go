@@ -52,13 +52,13 @@ func (n *WebhookNotifier) NotifyResult(ctx context.Context, image string, target
 func (n *WebhookNotifier) send(ctx context.Context, payload notificationPayload) {
 	body, err := json.Marshal(payload)
 	if err != nil {
-		slog.Error("failed to marshal notification payload", "error", err)
+		slog.Error("failed to marshal notification payload", "image", payload.Image, "target", payload.Target, "error", err)
 		return
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, n.url, bytes.NewReader(body))
 	if err != nil {
-		slog.Error("failed to create notification request", "error", err)
+		slog.Error("failed to create notification request", "image", payload.Image, "target", payload.Target, "error", err)
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
@@ -69,14 +69,16 @@ func (n *WebhookNotifier) send(ctx context.Context, payload notificationPayload)
 		req.Header.Set("X-Adze-Signature", "sha256="+hex.EncodeToString(mac.Sum(nil)))
 	}
 
+	slog.Debug("sending notification webhook", "image", payload.Image, "target", payload.Target, "status", payload.Status, "url", n.url)
+
 	resp, err := n.client.Do(req)
 	if err != nil {
-		slog.Error("failed to send notification", "url", n.url, "error", err)
+		slog.Error("failed to send notification", "image", payload.Image, "target", payload.Target, "url", n.url, "error", err)
 		return
 	}
 	resp.Body.Close()
 
 	if resp.StatusCode >= 300 {
-		slog.Error("notification webhook returned non-success status", "url", n.url, "status", resp.StatusCode)
+		slog.Error("notification webhook returned non-success status", "image", payload.Image, "target", payload.Target, "url", n.url, "status", resp.StatusCode)
 	}
 }
