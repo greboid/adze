@@ -36,6 +36,9 @@ func (u *SwarmUpdater) HandleUpdate(ctx context.Context, image string) error {
 		if normalizeImage(svc.Spec.TaskTemplate.ContainerSpec.Image) != normalizeImage(image) {
 			continue
 		}
+		if _, excluded := svc.Spec.Labels[excludeLabel]; excluded {
+			continue
+		}
 
 		slog.Info("updating swarm service", "service", svc.Spec.Name, "id", svc.ID)
 		spec := svc.Spec

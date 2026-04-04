@@ -52,6 +52,26 @@ Each notification payload is a POST request with a json payload, notifications a
 }
 ```
 
+## Excluding containers from updates
+
+To prevent a container or service from being updated, add the `com.greboid.adze.excluded` label. The label value is ignored.
+
+### Docker Compose
+
+```yaml
+services:
+  myapp:
+    image: myregistry/myapp
+    labels:
+      - "com.greboid.adze.excluded"
+```
+
+### Docker Swarm
+
+```
+docker service update --label-add com.greboid.adze.excluded myservice
+```
+
 ## Running it
 
 You need Docker with the Compose plugin available on the host. Adze needs access to the Docker socket and the filesystem containing your Compose files (it reads them directly, not through the Docker API).

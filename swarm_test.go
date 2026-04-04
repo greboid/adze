@@ -10,6 +10,10 @@ import (
 )
 
 func makeService(id, name, image string, versionIndex uint64, forceUpdate uint64) swarm.Service {
+	return makeServiceWithLabels(id, name, image, versionIndex, forceUpdate, nil)
+}
+
+func makeServiceWithLabels(id, name, image string, versionIndex uint64, forceUpdate uint64, labels map[string]string) swarm.Service {
 	return swarm.Service{
 		ID: id,
 		Meta: swarm.Meta{
@@ -17,7 +21,8 @@ func makeService(id, name, image string, versionIndex uint64, forceUpdate uint64
 		},
 		Spec: swarm.ServiceSpec{
 			Annotations: swarm.Annotations{
-				Name: name,
+				Name:   name,
+				Labels: labels,
 			},
 			TaskTemplate: swarm.TaskSpec{
 				ContainerSpec: &swarm.ContainerSpec{
@@ -204,5 +209,49 @@ func TestSwarmHandleUpdate_ImageNormalization(t *testing.T) {
 	}
 	if !up.called.Load() {
 		t.Error("expected ServiceUpdate to be called for matching base image")
+	}
+}
+
+func TestSwarmHandleUpdate_ExcludedService(t *testing.T) {
+	lister := &mockServiceLister{
+		services: []swarm.Service{
+			makeServiceWithLabels("svc1", "myapp_web", "myapp:latest", 1, 0, map[string]string{
+				excludeLabel: "true",
+			}),
+		},
+	}
+	up := &mockServiceUpdater{}
+	u := NewSwarmUpdater(lister, up, noopNotifier{})
+
+	err := u.HandleUpdate(context.Background(), "myapp:latest")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if up.called.Load() {
+		t.Error("expected ServiceUpdate not to be called for excluded service")
+	}
+}
+
+func TestSwarmHandleUpdate_ExcludedDoesNotAffectOthers(t *testing.T) {
+	lister := &mockServiceLister{
+		services: []swarm.Service{
+			makeServiceWithLabels("svc1", "excluded_web", "myapp:latest", 1, 0, map[string]string{
+				excludeLabel: "true",
+			}),
+			makeService("svc2", "included_web", "myapp:latest", 2, 0),
+		},
+	}
+	up := &mockServiceUpdater{}
+	u := NewSwarmUpdater(lister, up, noopNotifier{})
+
+	err := u.HandleUpdate(context.Background(), "myapp:latest")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !up.called.Load() {
+		t.Fatal("expected ServiceUpdate to be called for non-excluded service")
+	}
+	if up.serviceID != "svc2" {
+		t.Errorf("expected serviceID svc2, got %s", up.serviceID)
 	}
 }

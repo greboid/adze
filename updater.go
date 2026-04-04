@@ -12,6 +12,8 @@ import (
 	"github.com/docker/docker/api/types/filters"
 )
 
+const excludeLabel = "com.greboid.adze.excluded"
+
 func NewUpdater(composeService ComposeUpRunner, dockerClient ContainerLister, projectLoader ProjectLoader, notifier Notifier) *Updater {
 	return &Updater{
 		composeService: composeService,
@@ -101,6 +103,9 @@ func (u *Updater) findComposeProjects(ctx context.Context, image string) ([]Comp
 
 	for _, c := range containers {
 		if normalizeImage(c.Image) != normalizeImage(image) {
+			continue
+		}
+		if _, excluded := c.Labels[excludeLabel]; excluded {
 			continue
 		}
 		workingDir := c.Labels[api.WorkingDirLabel]

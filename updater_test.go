@@ -130,6 +130,69 @@ func TestFindComposeProjects_ListError(t *testing.T) {
 	}
 }
 
+func TestFindComposeProjects_ExcludedContainer(t *testing.T) {
+	lister := &mockContainerLister{
+		containers: []container.Summary{
+			{
+				Image: "myapp:latest",
+				Labels: map[string]string{
+					api.ProjectLabel:     "myproject",
+					api.WorkingDirLabel:  "/opt/myapp",
+					api.ConfigFilesLabel: "/opt/myapp/docker-compose.yml",
+					excludeLabel:         "true",
+				},
+			},
+		},
+	}
+
+	u := NewUpdater(nil, lister, nil, noopNotifier{})
+	projects, err := u.findComposeProjects(context.Background(), "myapp:latest")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(projects) != 0 {
+		t.Fatalf("expected 0 projects for excluded container, got %d", len(projects))
+	}
+}
+
+func TestFindComposeProjects_ExcludedDoesNotAffectOthers(t *testing.T) {
+	lister := &mockContainerLister{
+		containers: []container.Summary{
+			{
+				Image: "myapp:latest",
+				Labels: map[string]string{
+					api.ProjectLabel:     "excluded-project",
+					api.WorkingDirLabel:  "/opt/excluded",
+					api.ConfigFilesLabel: "/opt/excluded/docker-compose.yml",
+					excludeLabel:         "true",
+				},
+			},
+			{
+				Image: "myapp:latest",
+				Labels: map[string]string{
+					api.ProjectLabel:     "included-project",
+					api.WorkingDirLabel:  "/opt/included",
+					api.ConfigFilesLabel: "/opt/included/docker-compose.yml",
+				},
+			},
+		},
+	}
+
+	u := NewUpdater(nil, lister, nil, noopNotifier{})
+	projects, err := u.findComposeProjects(context.Background(), "myapp:latest")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(projects) != 1 {
+		t.Fatalf("expected 1 project, got %d", len(projects))
+	}
+	if projects[0].ProjectName != "included-project" {
+		t.Errorf("expected project name %q, got %q", "included-project", projects[0].ProjectName)
+	}
+}
+
 func TestHandleUpdate_NoProjects(t *testing.T) {
 	lister := &mockContainerLister{containers: nil}
 	up := &mockComposeUpRunner{}
