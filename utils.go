@@ -155,7 +155,10 @@ func extractTag(body []byte) string {
 	}
 	if p.Package.Owner.Login != "" && p.Package.Name != "" &&
 		(p.Package.Type == "container" || p.Package.PackageType == "CONTAINER") {
-		return p.Package.PackageVersion
+		if p.Package.Version != "" {
+			return p.Package.Version
+		}
+		return p.Package.PackageVersion.ContainerMetadata.Tag.Name
 	}
 	for _, event := range p.Events {
 		if event.Target.Tag != "" {

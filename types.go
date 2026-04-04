@@ -46,7 +46,6 @@ type Notifier interface {
 type noopNotifier struct{}
 
 func (noopNotifier) NotifyPending(_ context.Context, _ string, _ string) {}
-
 func (noopNotifier) NotifyResult(_ context.Context, _ string, _ string, _ error) {}
 
 type ImageUpdater interface {
@@ -105,8 +104,15 @@ type webhookPayload struct {
 		} `json:"owner"`
 		Type        string `json:"type"`
 		PackageType string `json:"package_type"`
-		Name           string `json:"name"`
-		PackageVersion string `json:"package"`
+		Name    string `json:"name"`
+		Version string `json:"version"`
+		PackageVersion struct {
+			ContainerMetadata struct {
+				Tag struct {
+					Name string `json:"name"`
+				} `json:"tag"`
+			} `json:"container_metadata"`
+		} `json:"package_version"`
 	} `json:"package"`
 	Events []struct {
 		Action string `json:"action"`
