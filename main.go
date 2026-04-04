@@ -104,6 +104,7 @@ func run() error {
 
 	var notifier Notifier = noopNotifier{}
 	if *webhookURL != "" {
+		slog.Info("notifications enabled", "url", *webhookURL)
 		notifier = NewWebhookNotifier(*webhookURL, *webhookSecret)
 	}
 
