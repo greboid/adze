@@ -22,6 +22,11 @@ func TestNormalizeImage(t *testing.T) {
 		{"registry.example.com/myimage:latest", "registry.example.com/myimage"},
 		{"registry.example.com/myimage:v1@sha256:deadbeef", "registry.example.com/myimage"},
 		{"registry.example.com/myimage@sha256:deadbeef", "registry.example.com/myimage"},
+		{"reg:8080/myimage", "reg:8080/myimage"},
+		{"reg:8080/myimage:latest", "reg:8080/myimage"},
+		{"reg:8080/myimage:v1", "reg:8080/myimage"},
+		{"reg:8080/myimage:v1@sha256:abc123", "reg:8080/myimage"},
+		{"reg:8080/my/org/myimage:v2", "reg:8080/my/org/myimage"},
 	}
 
 	for _, tt := range tests {
@@ -311,6 +316,11 @@ func TestExtractImageTag(t *testing.T) {
 		{"registry.example.com/myimage:latest", "latest"},
 		{"registry.example.com/myimage:v2", "v2"},
 		{"registry.example.com/myimage:v1@sha256:deadbeef", "v1"},
+		{"reg:8080/myimage", "latest"},
+		{"reg:8080/myimage:latest", "latest"},
+		{"reg:8080/myimage:v1", "v1"},
+		{"reg:8080/myimage:v1@sha256:abc123", "v1"},
+		{"reg:8080/my/org/myimage:v2", "v2"},
 	}
 
 	for _, tt := range tests {
