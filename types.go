@@ -106,7 +106,7 @@ type webhookPayload struct {
 		Type        string `json:"type"`
 		PackageType string `json:"package_type"`
 		Name           string `json:"name"`
-		PackageVersion string `json:"package_version"`
+		PackageVersion string `json:"package"`
 	} `json:"package"`
 	Events []struct {
 		Action string `json:"action"`
