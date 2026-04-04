@@ -66,7 +66,11 @@ func run() error {
 
 	_ = slogflags.Logger(slogflags.WithSetDefault(true))
 
-	slog.Info("starting adze", "version", version())
+	mode := "exclude"
+	if *includeOnly {
+		mode = "include"
+	}
+	slog.Info("starting adze", "version", version(), "mode", mode)
 
 	secrets := strings.Split(*secret, ",")
 	for i := range secrets {
