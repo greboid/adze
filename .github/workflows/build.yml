@@ -26,6 +26,6 @@ jobs:
         with:
           go-version-file: go.mod
       - run: CGO_ENABLED=0 go build -tags netgo,opusergo -a -trimpath -ldflags='-w -extldflags "-static" -buildid=' -o adze .
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: adze
