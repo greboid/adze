@@ -23,6 +23,7 @@ jobs:
   container:
     runs-on: alpine
     steps:
+      - uses: actions/checkout@master
       - uses: actions/docker-build@master
   release:
     if: github.ref_type == 'tag'
