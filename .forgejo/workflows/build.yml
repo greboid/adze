@@ -1,0 +1,32 @@
+name: Build
+
+enable-openid-connect: true
+
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    tags:
+      - v*
+
+jobs:
+  test:
+    - uses: actions/checkout@master
+    - uses: actions/setup-go@master
+    - uses: actions/docker-login@master
+      with:
+        audience: u:1:3d49eeee-778f-42ed-bff2-ebc1fa5ba54d
+  container:
+    steps:
+      - uses: actions/docker-build@master
+  release:
+    if: github.ref_type == 'tag'
+    needs:
+      - test
+      - container
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions/setup-go@master
+      - uses: actions/build-go@master
