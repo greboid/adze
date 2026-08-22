@@ -13,16 +13,20 @@ on:
 
 jobs:
   test:
-    - uses: actions/checkout@master
-    - uses: actions/setup-go@master
-    - uses: actions/docker-login@master
-      with:
-        audience: u:1:3d49eeee-778f-42ed-bff2-ebc1fa5ba54d
+    runs-on: docker
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions/setup-go@master
+      - uses: actions/docker-login@master
+        with:
+          audience: u:1:3d49eeee-778f-42ed-bff2-ebc1fa5ba54d
   container:
+    runs-on: docker
     steps:
       - uses: actions/docker-build@master
   release:
     if: github.ref_type == 'tag'
+    runs-on: docker
     needs:
       - test
       - container
