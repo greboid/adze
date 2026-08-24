@@ -15,15 +15,15 @@ jobs:
   test:
     runs-on: alpine
     steps:
-      - uses: actions/toolkit/checkout@master
-      - uses: actions/toolkit/setup-go@master
+      - uses: actions/toolkit/git-checkout@master
+      - uses: actions/toolkit/go-setup@master
       - uses: actions/toolkit/docker-login@master
         with:
           audience: u:1:3d49eeee-778f-42ed-bff2-ebc1fa5ba54d
   container:
     runs-on: alpine
     steps:
-      - uses: actions/toolkit/checkout@master
+      - uses: actions/toolkit/git-checkout@master
       - uses: actions/toolkit/docker-build@master
   release:
     if: github.ref_type == 'tag'
@@ -32,6 +32,6 @@ jobs:
       - test
       - container
     steps:
-      - uses: actions/toolkit/checkout@master
-      - uses: actions/toolkit/setup-go@master
-      - uses: actions/toolkit/build-go@master
+      - uses: actions/toolkit/git-checkout@master
+      - uses: actions/toolkit/go-setup@master
+      - uses: actions/toolkit/go-build@master
