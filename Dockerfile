@@ -6,7 +6,7 @@ RUN go mod download
 COPY . /app
 RUN CGO_ENABLED=0 go build -tags netgo,opusergo -a -trimpath -ldflags='-w -extldflags "-static" -buildid=' -o main .
 
-FROM ghcr.io/greboid/dockerbase/root:1.20260305.0
+FROM ghcr.io/greboid/dockerbase/root:1.20260829.0
 
 COPY --from=builder /app/main /adze
 CMD ["/adze"]
