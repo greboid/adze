@@ -26,6 +26,6 @@ jobs:
         with:
           audience: u:1:3d49eeee-778f-42ed-bff2-ebc1fa5ba54d
           ghcr: ${{ secrets.GHCR_TOKEN }}
-      - uses: actions/toolkit/docker-build@master
+      - uses: actions/toolkit/docker-push@master
         with:
           ghcr: true
