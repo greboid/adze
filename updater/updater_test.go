@@ -1,4 +1,4 @@
-package main
+package updater
 
 import (
 	"context"
@@ -25,7 +25,7 @@ func TestFindComposeProjects_MatchingContainer(t *testing.T) {
 		},
 	}
 
-	u := NewUpdater(nil, lister, nil, noopNotifier{}, false)
+	u := NewUpdater(nil, lister, nil, NoopNotifier{}, false)
 	projects, err := u.findComposeProjects(context.Background(), "myapp:latest", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -55,7 +55,7 @@ func TestFindComposeProjects_NoMatch(t *testing.T) {
 		},
 	}
 
-	u := NewUpdater(nil, lister, nil, noopNotifier{}, false)
+	u := NewUpdater(nil, lister, nil, NoopNotifier{}, false)
 	projects, err := u.findComposeProjects(context.Background(), "myapp:latest", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -86,7 +86,7 @@ func TestFindComposeProjects_Deduplicates(t *testing.T) {
 		},
 	}
 
-	u := NewUpdater(nil, lister, nil, noopNotifier{}, false)
+	u := NewUpdater(nil, lister, nil, NoopNotifier{}, false)
 	projects, err := u.findComposeProjects(context.Background(), "myapp:latest", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -107,7 +107,7 @@ func TestFindComposeProjects_SkipsNonCompose(t *testing.T) {
 		},
 	}
 
-	u := NewUpdater(nil, lister, nil, noopNotifier{}, false)
+	u := NewUpdater(nil, lister, nil, NoopNotifier{}, false)
 	projects, err := u.findComposeProjects(context.Background(), "myapp:latest", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -123,7 +123,7 @@ func TestFindComposeProjects_ListError(t *testing.T) {
 		err: fmt.Errorf("docker error"),
 	}
 
-	u := NewUpdater(nil, lister, nil, noopNotifier{}, false)
+	u := NewUpdater(nil, lister, nil, NoopNotifier{}, false)
 	_, err := u.findComposeProjects(context.Background(), "myapp:latest", "")
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -145,7 +145,7 @@ func TestFindComposeProjects_ExcludedContainer(t *testing.T) {
 		},
 	}
 
-	u := NewUpdater(nil, lister, nil, noopNotifier{}, false)
+	u := NewUpdater(nil, lister, nil, NoopNotifier{}, false)
 	projects, err := u.findComposeProjects(context.Background(), "myapp:latest", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -179,7 +179,7 @@ func TestFindComposeProjects_ExcludedDoesNotAffectOthers(t *testing.T) {
 		},
 	}
 
-	u := NewUpdater(nil, lister, nil, noopNotifier{}, false)
+	u := NewUpdater(nil, lister, nil, NoopNotifier{}, false)
 	projects, err := u.findComposeProjects(context.Background(), "myapp:latest", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -196,7 +196,7 @@ func TestFindComposeProjects_ExcludedDoesNotAffectOthers(t *testing.T) {
 func TestHandleUpdate_NoProjects(t *testing.T) {
 	lister := &mockContainerLister{containers: nil}
 	up := &mockComposeUpRunner{}
-	u := NewUpdater(up, lister, nil, noopNotifier{}, false)
+	u := NewUpdater(up, lister, nil, NoopNotifier{}, false)
 
 	err := u.HandleUpdate(context.Background(), "nonexistent:latest", "")
 	if err != nil {
@@ -230,7 +230,7 @@ func TestHandleUpdate_WithProject(t *testing.T) {
 		},
 	}
 	up := &mockComposeUpRunner{}
-	u := NewUpdater(up, lister, loader, noopNotifier{}, false)
+	u := NewUpdater(up, lister, loader, NoopNotifier{}, false)
 
 	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
 	if err != nil {
@@ -267,7 +267,7 @@ func TestHandleUpdate_ComposeUpError(t *testing.T) {
 	}
 	upErr := fmt.Errorf("compose up failed")
 	up := &mockComposeUpRunner{err: upErr}
-	u := NewUpdater(up, lister, loader, noopNotifier{}, false)
+	u := NewUpdater(up, lister, loader, NoopNotifier{}, false)
 
 	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
 	if err == nil {
@@ -307,7 +307,7 @@ func TestHandleUpdate_ProjectLoadError(t *testing.T) {
 
 	loader := &mockProjectLoader{err: fmt.Errorf("load failed")}
 	up := &mockComposeUpRunner{}
-	u := NewUpdater(up, lister, loader, noopNotifier{}, false)
+	u := NewUpdater(up, lister, loader, NoopNotifier{}, false)
 
 	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
 	if err == nil {
@@ -337,7 +337,7 @@ func TestHandleUpdate_MultipleConfigFiles(t *testing.T) {
 		},
 	}
 	up := &mockComposeUpRunner{}
-	u := NewUpdater(up, lister, loader, noopNotifier{}, false)
+	u := NewUpdater(up, lister, loader, NoopNotifier{}, false)
 
 	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
 	if err != nil {
@@ -381,7 +381,7 @@ func TestHandleUpdate_SingleConfigFile(t *testing.T) {
 		},
 	}
 	up := &mockComposeUpRunner{}
-	u := NewUpdater(up, lister, loader, noopNotifier{}, false)
+	u := NewUpdater(up, lister, loader, NoopNotifier{}, false)
 
 	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
 	if err != nil {
@@ -414,7 +414,7 @@ func TestHandleUpdate_NoConfigFiles(t *testing.T) {
 		},
 	}
 	up := &mockComposeUpRunner{}
-	u := NewUpdater(up, lister, loader, noopNotifier{}, false)
+	u := NewUpdater(up, lister, loader, NoopNotifier{}, false)
 
 	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
 	if err != nil {
@@ -440,7 +440,7 @@ func TestFindComposeProjects_IncludeOnly_SkipsUnlabelled(t *testing.T) {
 		},
 	}
 
-	u := NewUpdater(nil, lister, nil, noopNotifier{}, true)
+	u := NewUpdater(nil, lister, nil, NoopNotifier{}, true)
 	projects, err := u.findComposeProjects(context.Background(), "myapp:latest", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -466,7 +466,7 @@ func TestFindComposeProjects_IncludeOnly_IncludesLabelled(t *testing.T) {
 		},
 	}
 
-	u := NewUpdater(nil, lister, nil, noopNotifier{}, true)
+	u := NewUpdater(nil, lister, nil, NoopNotifier{}, true)
 	projects, err := u.findComposeProjects(context.Background(), "myapp:latest", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -496,7 +496,7 @@ func TestFindComposeProjects_IncludeOnly_IgnoresExcludeLabel(t *testing.T) {
 		},
 	}
 
-	u := NewUpdater(nil, lister, nil, noopNotifier{}, true)
+	u := NewUpdater(nil, lister, nil, NoopNotifier{}, true)
 	projects, err := u.findComposeProjects(context.Background(), "myapp:latest", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -520,7 +520,7 @@ func TestFindComposeProjects_TagMatch(t *testing.T) {
 		},
 	}
 
-	u := NewUpdater(nil, lister, nil, noopNotifier{}, false)
+	u := NewUpdater(nil, lister, nil, NoopNotifier{}, false)
 	projects, err := u.findComposeProjects(context.Background(), "myapp:latest", "latest")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -544,7 +544,7 @@ func TestFindComposeProjects_TagMismatch(t *testing.T) {
 		},
 	}
 
-	u := NewUpdater(nil, lister, nil, noopNotifier{}, false)
+	u := NewUpdater(nil, lister, nil, NoopNotifier{}, false)
 	projects, err := u.findComposeProjects(context.Background(), "myapp:latest", "dev")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -568,7 +568,7 @@ func TestFindComposeProjects_UntaggedMatchesLatest(t *testing.T) {
 		},
 	}
 
-	u := NewUpdater(nil, lister, nil, noopNotifier{}, false)
+	u := NewUpdater(nil, lister, nil, NoopNotifier{}, false)
 	projects, err := u.findComposeProjects(context.Background(), "myapp", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -599,7 +599,7 @@ func TestFindComposeProjects_TagFilterAcrossContainers(t *testing.T) {
 		},
 	}
 
-	u := NewUpdater(nil, lister, nil, noopNotifier{}, false)
+	u := NewUpdater(nil, lister, nil, NoopNotifier{}, false)
 	projects, err := u.findComposeProjects(context.Background(), "myapp:dev", "dev")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
