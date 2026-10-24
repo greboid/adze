@@ -1,12 +1,10 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -19,26 +17,8 @@ import (
 
 	"github.com/csmith/envflag/v2"
 	"github.com/csmith/slogflags"
-	"github.com/docker/cli/cli/command"
-	"github.com/docker/cli/cli/config"
-	cliflags "github.com/docker/cli/cli/flags"
-	"github.com/docker/compose/v2/pkg/compose"
-	"github.com/docker/docker/client"
+	"github.com/greboid/adze/updater"
 )
-
-// newSlogWriter returns an io.Writer that logs each line via slog.Debug in a background goroutine.
-func newSlogWriter(stream string) io.Writer {
-	r, w := io.Pipe()
-	go func() {
-		scanner := bufio.NewScanner(r)
-		for scanner.Scan() {
-			if line := scanner.Text(); line != "" {
-				slog.Debug(line, "stream", stream)
-			}
-		}
-	}()
-	return w
-}
 
 func main() {
 	if err := run(); err != nil {
@@ -66,11 +46,7 @@ func run() error {
 
 	_ = slogflags.Logger(slogflags.WithSetDefault(true))
 
-	mode := "exclude"
-	if *includeOnly {
-		mode = "include"
-	}
-	slog.Info("starting adze", "version", version())
+	slog.Info("starting adze", "version", version(), "addr", *addr)
 
 	secrets := strings.Split(*secret, ",")
 	for i := range secrets {
@@ -84,40 +60,18 @@ func run() error {
 		return fmt.Errorf("secret is required")
 	}
 
-	opts := cliflags.NewClientOptions()
-	if fi, err := os.Stat(config.Dir()); err == nil && fi.IsDir() {
-		opts.ConfigDir = config.Dir()
-	}
-
-	dockerCli, err := command.NewDockerCli(
-		command.WithOutputStream(newSlogWriter("stdout")),
-		command.WithErrorStream(newSlogWriter("stderr")),
-	)
-	if err != nil {
-		return fmt.Errorf("creating docker cli: %w", err)
-	}
-	if err := dockerCli.Initialize(opts); err != nil {
-		return fmt.Errorf("initializing docker cli: %w", err)
-	}
-	composeService := compose.NewComposeService(dockerCli)
-
-	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return fmt.Errorf("creating docker client: %w", err)
-	}
-
-	var notifier Notifier = noopNotifier{}
+	var notifier updater.Notifier = updater.NoopNotifier{}
 	if *webhookURL != "" {
 		slog.Info("notifications enabled", "url", *webhookURL)
-		notifier = NewWebhookNotifier(*webhookURL, *webhookSecret)
+		notifier = updater.NewWebhookNotifier(*webhookURL, *webhookSecret)
 	}
 
-	updater, err := createUpdater(dockerClient, composeService, notifier, mode, *addr)
+	imageUpdater, err := updater.NewFromEnv(context.Background(), notifier, *includeOnly)
 	if err != nil {
 		return err
 	}
 
-	handler := NewHandler(secrets, updater)
+	handler := NewHandler(secrets, imageUpdater)
 
 	mux := http.NewServeMux()
 	mux.Handle("POST /webhook", handler)
@@ -163,24 +117,4 @@ func run() error {
 
 	slog.Info("server stopped")
 	return nil
-}
-
-func createUpdater(dockerClient *client.Client, composeService ComposeUpRunner, notifier Notifier, mode string, addr string) (ImageUpdater, error) {
-	info, err := dockerClient.Info(context.Background())
-	if err != nil {
-		return nil, fmt.Errorf("getting docker info: %w", err)
-	}
-
-	includeOnly := mode == "include"
-
-	if info.Swarm.LocalNodeState == "active" {
-		if info.Swarm.ControlAvailable {
-			slog.Info("configuration", "docker", "swarm", "selection", mode, "addr", addr)
-			return NewSwarmUpdater(dockerClient, dockerClient, notifier, includeOnly), nil
-		}
-		return nil, fmt.Errorf("this node is a swarm worker, adze must run on a swarm manager")
-	}
-
-	slog.Info("configuration", "docker", "compose", "selection", mode, "addr", addr)
-	return NewUpdater(composeService, dockerClient, ComposeProjectLoader{}, notifier, includeOnly), nil
 }

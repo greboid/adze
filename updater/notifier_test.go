@@ -1,4 +1,4 @@
-package main
+package updater
 
 import (
 	"context"
@@ -176,7 +176,7 @@ func TestWebhookNotifier_InvalidURL(t *testing.T) {
 }
 
 func TestNoopNotifier(t *testing.T) {
-	n := noopNotifier{}
+	n := NoopNotifier{}
 	// Should not panic
 	n.NotifyPending(context.Background(), "myapp", "proj", "")
 	n.NotifyResult(context.Background(), "myapp", "proj", "", nil)

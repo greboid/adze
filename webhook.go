@@ -5,12 +5,14 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+
+	"github.com/greboid/adze/updater"
 )
 
-func NewHandler(secrets []string, updater ImageUpdater) *Handler {
+func NewHandler(secrets []string, imageUpdater updater.ImageUpdater) *Handler {
 	h := &Handler{
 		secrets: secrets,
-		updater: updater,
+		updater: imageUpdater,
 		updates: make(chan updateRequest, 100),
 	}
 	go h.processUpdates()

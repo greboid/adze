@@ -1,4 +1,4 @@
-package main
+package updater
 
 import (
 	"context"
@@ -39,7 +39,7 @@ func TestSwarmHandleUpdate_NoMatch(t *testing.T) {
 		},
 	}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up, noopNotifier{}, false)
+	u := NewSwarmUpdater(lister, up, NoopNotifier{}, false)
 
 	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
 	if err != nil {
@@ -57,7 +57,7 @@ func TestSwarmHandleUpdate_MatchingService(t *testing.T) {
 		},
 	}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up, noopNotifier{}, false)
+	u := NewSwarmUpdater(lister, up, NoopNotifier{}, false)
 
 	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
 	if err != nil {
@@ -85,7 +85,7 @@ func TestSwarmHandleUpdate_MultipleMatchingServices(t *testing.T) {
 		},
 	}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up, noopNotifier{}, false)
+	u := NewSwarmUpdater(lister, up, NoopNotifier{}, false)
 
 	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
 	if err != nil {
@@ -108,7 +108,7 @@ func TestSwarmHandleUpdate_UpdateError(t *testing.T) {
 	}
 	upErr := fmt.Errorf("update failed")
 	up := &mockServiceUpdater{err: upErr}
-	u := NewSwarmUpdater(lister, up, noopNotifier{}, false)
+	u := NewSwarmUpdater(lister, up, NoopNotifier{}, false)
 
 	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
 	if err == nil {
@@ -152,7 +152,7 @@ func TestSwarmHandleUpdate_NilContainerSpec(t *testing.T) {
 		},
 	}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up, noopNotifier{}, false)
+	u := NewSwarmUpdater(lister, up, NoopNotifier{}, false)
 
 	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
 	if err != nil {
@@ -166,7 +166,7 @@ func TestSwarmHandleUpdate_NilContainerSpec(t *testing.T) {
 func TestSwarmHandleUpdate_ServiceListError(t *testing.T) {
 	lister := &mockServiceLister{err: fmt.Errorf("docker error")}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up, noopNotifier{}, false)
+	u := NewSwarmUpdater(lister, up, NoopNotifier{}, false)
 
 	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
 	if err == nil {
@@ -181,7 +181,7 @@ func TestSwarmHandleUpdate_ForceUpdateIncrements(t *testing.T) {
 		},
 	}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up, noopNotifier{}, false)
+	u := NewSwarmUpdater(lister, up, NoopNotifier{}, false)
 
 	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
 	if err != nil {
@@ -199,7 +199,7 @@ func TestSwarmHandleUpdate_ImageNormalization(t *testing.T) {
 		},
 	}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up, noopNotifier{}, false)
+	u := NewSwarmUpdater(lister, up, NoopNotifier{}, false)
 
 	err := u.HandleUpdate(context.Background(), "myapp:v2.0", "")
 	if err != nil {
@@ -219,7 +219,7 @@ func TestSwarmHandleUpdate_ExcludedService(t *testing.T) {
 		},
 	}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up, noopNotifier{}, false)
+	u := NewSwarmUpdater(lister, up, NoopNotifier{}, false)
 
 	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
 	if err != nil {
@@ -240,7 +240,7 @@ func TestSwarmHandleUpdate_ExcludedDoesNotAffectOthers(t *testing.T) {
 		},
 	}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up, noopNotifier{}, false)
+	u := NewSwarmUpdater(lister, up, NoopNotifier{}, false)
 
 	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
 	if err != nil {
@@ -261,7 +261,7 @@ func TestSwarmHandleUpdate_IncludeOnly_SkipsUnlabelled(t *testing.T) {
 		},
 	}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up, noopNotifier{}, true)
+	u := NewSwarmUpdater(lister, up, NoopNotifier{}, true)
 
 	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
 	if err != nil {
@@ -281,7 +281,7 @@ func TestSwarmHandleUpdate_IncludeOnly_IncludesLabelled(t *testing.T) {
 		},
 	}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up, noopNotifier{}, true)
+	u := NewSwarmUpdater(lister, up, NoopNotifier{}, true)
 
 	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
 	if err != nil {
@@ -302,7 +302,7 @@ func TestSwarmHandleUpdate_IncludeOnly_IgnoresExcludeLabel(t *testing.T) {
 		},
 	}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up, noopNotifier{}, true)
+	u := NewSwarmUpdater(lister, up, NoopNotifier{}, true)
 
 	err := u.HandleUpdate(context.Background(), "myapp:latest", "")
 	if err != nil {
@@ -320,7 +320,7 @@ func TestSwarmHandleUpdate_TagMatch(t *testing.T) {
 		},
 	}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up, noopNotifier{}, false)
+	u := NewSwarmUpdater(lister, up, NoopNotifier{}, false)
 
 	err := u.HandleUpdate(context.Background(), "myapp", "latest")
 	if err != nil {
@@ -338,7 +338,7 @@ func TestSwarmHandleUpdate_TagMismatch(t *testing.T) {
 		},
 	}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up, noopNotifier{}, false)
+	u := NewSwarmUpdater(lister, up, NoopNotifier{}, false)
 
 	err := u.HandleUpdate(context.Background(), "myapp", "dev")
 	if err != nil {
@@ -356,7 +356,7 @@ func TestSwarmHandleUpdate_UntaggedMatchesLatest(t *testing.T) {
 		},
 	}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up, noopNotifier{}, false)
+	u := NewSwarmUpdater(lister, up, NoopNotifier{}, false)
 
 	err := u.HandleUpdate(context.Background(), "myapp", "")
 	if err != nil {
@@ -375,7 +375,7 @@ func TestSwarmHandleUpdate_TagFilterAcrossServices(t *testing.T) {
 		},
 	}
 	up := &mockServiceUpdater{}
-	u := NewSwarmUpdater(lister, up, noopNotifier{}, false)
+	u := NewSwarmUpdater(lister, up, NoopNotifier{}, false)
 
 	err := u.HandleUpdate(context.Background(), "myapp", "dev")
 	if err != nil {

@@ -1,20 +1,15 @@
 package main
 
 import (
-	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
-
-	"github.com/compose-spec/compose-go/v2/cli"
-	composetypes "github.com/compose-spec/compose-go/v2/types"
 )
 
 func validateSignature(secrets []string, headers http.Header, body []byte) bool {
@@ -128,26 +123,6 @@ func generateEndpointPath(secret string, index int) string {
 	return h[0:8] + "-" + h[8:12] + "-" + h[12:16] + "-" + h[16:20] + "-" + h[20:32]
 }
 
-func normalizeImage(ref string) string {
-	if strings.Contains(ref, "@") {
-		ref = strings.SplitN(ref, "@", 2)[0]
-	}
-	if idx := strings.LastIndex(ref, ":"); idx > strings.LastIndex(ref, "/") {
-		ref = ref[:idx]
-	}
-	return ref
-}
-
-func extractImageTag(ref string) string {
-	if strings.Contains(ref, "@") {
-		ref = strings.SplitN(ref, "@", 2)[0]
-	}
-	if idx := strings.LastIndex(ref, ":"); idx > strings.LastIndex(ref, "/") {
-		return ref[idx+1:]
-	}
-	return "latest"
-}
-
 func extractTag(body []byte) string {
 	var p webhookPayload
 	if err := json.Unmarshal(body, &p); err != nil {
@@ -166,34 +141,4 @@ func extractTag(body []byte) string {
 		}
 	}
 	return ""
-}
-
-func normalizeTag(tag string) string {
-	if tag == "" {
-		return "latest"
-	}
-	return tag
-}
-
-type ComposeProjectLoader struct{}
-
-func (l ComposeProjectLoader) LoadProject(ctx context.Context, workingDir string, configFiles []string) (*composetypes.Project, error) {
-	optFns := []cli.ProjectOptionsFn{
-		cli.WithWorkingDirectory(workingDir),
-		cli.WithOsEnv,
-		cli.WithConfigFileEnv,
-		cli.WithDefaultConfigPath,
-	}
-
-	opts, err := cli.NewProjectOptions(configFiles, optFns...)
-	if err != nil {
-		return nil, fmt.Errorf("creating project options: %w", err)
-	}
-
-	project, err := opts.LoadProject(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("loading project: %w", err)
-	}
-
-	return project, nil
 }
