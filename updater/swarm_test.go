@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/docker/docker/api/types/swarm"
+	"github.com/moby/moby/api/types/swarm"
 )
 
 func makeService(id, name, image string, versionIndex uint64, forceUpdate uint64) swarm.Service {

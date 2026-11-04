@@ -5,9 +5,10 @@ import (
 	"sync/atomic"
 
 	composetypes "github.com/compose-spec/compose-go/v2/types"
-	"github.com/docker/compose/v2/pkg/api"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/swarm"
+	"github.com/docker/compose/v5/pkg/api"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/swarm"
+	"github.com/moby/moby/client"
 )
 
 type mockContainerLister struct {
@@ -15,8 +16,8 @@ type mockContainerLister struct {
 	err        error
 }
 
-func (m *mockContainerLister) ContainerList(_ context.Context, opts container.ListOptions) ([]container.Summary, error) {
-	return m.containers, m.err
+func (m *mockContainerLister) ContainerList(_ context.Context, opts client.ContainerListOptions) (client.ContainerListResult, error) {
+	return client.ContainerListResult{Items: m.containers}, m.err
 }
 
 type mockComposeUpRunner struct {
@@ -51,8 +52,8 @@ type mockServiceLister struct {
 	err      error
 }
 
-func (m *mockServiceLister) ServiceList(_ context.Context, _ swarm.ServiceListOptions) ([]swarm.Service, error) {
-	return m.services, m.err
+func (m *mockServiceLister) ServiceList(_ context.Context, _ client.ServiceListOptions) (client.ServiceListResult, error) {
+	return client.ServiceListResult{Items: m.services}, m.err
 }
 
 type mockServiceUpdater struct {
@@ -63,10 +64,10 @@ type mockServiceUpdater struct {
 	err       error
 }
 
-func (m *mockServiceUpdater) ServiceUpdate(_ context.Context, serviceID string, version swarm.Version, spec swarm.ServiceSpec, _ swarm.ServiceUpdateOptions) (swarm.ServiceUpdateResponse, error) {
+func (m *mockServiceUpdater) ServiceUpdate(_ context.Context, serviceID string, options client.ServiceUpdateOptions) (client.ServiceUpdateResult, error) {
 	m.called.Store(true)
 	m.serviceID = serviceID
-	m.version = version
-	m.spec = spec
-	return swarm.ServiceUpdateResponse{}, m.err
+	m.version = options.Version
+	m.spec = options.Spec
+	return client.ServiceUpdateResult{}, m.err
 }

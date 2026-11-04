@@ -7,9 +7,8 @@ import (
 	"strings"
 
 	composetypes "github.com/compose-spec/compose-go/v2/types"
-	"github.com/docker/compose/v2/pkg/api"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/compose/v5/pkg/api"
+	"github.com/moby/moby/client"
 )
 
 const excludeLabel = "com.greboid.adze.excluded"
@@ -93,11 +92,8 @@ func (u *Updater) runUp(ctx context.Context, workingDir string, configFiles []st
 }
 
 func (u *Updater) findComposeProjects(ctx context.Context, image string, tag string) ([]ComposeProject, error) {
-	containers, err := u.dockerClient.ContainerList(ctx, container.ListOptions{
-		Filters: filters.NewArgs(filters.KeyValuePair{
-			Key:   "status",
-			Value: "running",
-		}),
+	containers, err := u.dockerClient.ContainerList(ctx, client.ContainerListOptions{
+		Filters: make(client.Filters).Add("status", "running"),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("listing containers: %w", err)
@@ -106,7 +102,7 @@ func (u *Updater) findComposeProjects(ctx context.Context, image string, tag str
 	seen := make(map[string]bool)
 	var projects []ComposeProject
 
-	for _, c := range containers {
+	for _, c := range containers.Items {
 		if normalizeImage(c.Image) != normalizeImage(image) {
 			slog.Debug("skipping container, image mismatch", "container", c.Names, "container_image", normalizeImage(c.Image), "target_image", normalizeImage(image))
 			continue

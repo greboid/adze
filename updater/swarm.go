@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/docker/docker/api/types/swarm"
+	"github.com/moby/moby/client"
 )
 
 type SwarmUpdater struct {
@@ -25,14 +25,14 @@ func NewSwarmUpdater(serviceLister ServiceLister, serviceUpdater ServiceUpdater,
 }
 
 func (u *SwarmUpdater) HandleUpdate(ctx context.Context, image string, tag string) error {
-	services, err := u.serviceLister.ServiceList(ctx, swarm.ServiceListOptions{})
+	services, err := u.serviceLister.ServiceList(ctx, client.ServiceListOptions{})
 	if err != nil {
 		return fmt.Errorf("listing swarm services: %w", err)
 	}
 
 	var matched bool
 	var errs []error
-	for _, svc := range services {
+	for _, svc := range services.Items {
 		if svc.Spec.TaskTemplate.ContainerSpec == nil {
 			slog.Debug("skipping service, no container spec", "service", svc.Spec.Name)
 			continue
@@ -61,7 +61,7 @@ func (u *SwarmUpdater) HandleUpdate(ctx context.Context, image string, tag strin
 		spec.TaskTemplate.ForceUpdate++
 
 		u.notifier.NotifyPending(ctx, image, svc.Spec.Name, "")
-		if _, err := u.serviceUpdater.ServiceUpdate(ctx, svc.ID, svc.Version, spec, swarm.ServiceUpdateOptions{}); err != nil {
+		if _, err := u.serviceUpdater.ServiceUpdate(ctx, svc.ID, client.ServiceUpdateOptions{Version: svc.Version, Spec: spec}); err != nil {
 			slog.Error("failed to update swarm service", "service", svc.Spec.Name, "image", image, "tag", tag, "id", svc.ID, "error", err)
 			u.notifier.NotifyResult(ctx, image, svc.Spec.Name, "", err)
 			errs = append(errs, &ServiceUpdateError{

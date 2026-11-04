@@ -6,13 +6,12 @@ import (
 	"strings"
 
 	composetypes "github.com/compose-spec/compose-go/v2/types"
-	"github.com/docker/compose/v2/pkg/api"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/swarm"
+	"github.com/docker/compose/v5/pkg/api"
+	"github.com/moby/moby/client"
 )
 
 type ContainerLister interface {
-	ContainerList(ctx context.Context, opts container.ListOptions) ([]container.Summary, error)
+	ContainerList(ctx context.Context, opts client.ContainerListOptions) (client.ContainerListResult, error)
 }
 
 type ComposeUpRunner interface {
@@ -24,11 +23,11 @@ type ProjectLoader interface {
 }
 
 type ServiceLister interface {
-	ServiceList(ctx context.Context, options swarm.ServiceListOptions) ([]swarm.Service, error)
+	ServiceList(ctx context.Context, options client.ServiceListOptions) (client.ServiceListResult, error)
 }
 
 type ServiceUpdater interface {
-	ServiceUpdate(ctx context.Context, serviceID string, version swarm.Version, spec swarm.ServiceSpec, options swarm.ServiceUpdateOptions) (swarm.ServiceUpdateResponse, error)
+	ServiceUpdate(ctx context.Context, serviceID string, options client.ServiceUpdateOptions) (client.ServiceUpdateResult, error)
 }
 
 type notificationPayload struct {

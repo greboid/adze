@@ -11,8 +11,9 @@ import (
 	"github.com/docker/cli/cli/command"
 	"github.com/docker/cli/cli/config"
 	cliflags "github.com/docker/cli/cli/flags"
-	"github.com/docker/compose/v2/pkg/compose"
-	"github.com/docker/docker/client"
+	"github.com/docker/compose/v5/cmd/display"
+	"github.com/docker/compose/v5/pkg/compose"
+	"github.com/moby/moby/client"
 )
 
 // newSlogWriter returns an io.Writer that logs each line via slog.Debug in a background goroutine.
@@ -47,9 +48,12 @@ func NewFromEnv(ctx context.Context, notifier Notifier, includeOnly bool) (Image
 	if err := dockerCli.Initialize(opts); err != nil {
 		return nil, fmt.Errorf("initializing docker cli: %w", err)
 	}
-	composeService := compose.NewComposeService(dockerCli)
+	composeService, err := compose.NewComposeService(dockerCli, compose.WithEventProcessor(display.Plain(dockerCli.Err())))
+	if err != nil {
+		return nil, fmt.Errorf("creating compose service: %w", err)
+	}
 
-	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	dockerClient, err := client.New(client.FromEnv)
 	if err != nil {
 		return nil, fmt.Errorf("creating docker client: %w", err)
 	}
@@ -59,7 +63,7 @@ func NewFromEnv(ctx context.Context, notifier Notifier, includeOnly bool) (Image
 
 // New returns a swarm updater if the docker daemon is a swarm manager, or a compose updater otherwise.
 func New(ctx context.Context, dockerClient *client.Client, composeService ComposeUpRunner, notifier Notifier, includeOnly bool) (ImageUpdater, error) {
-	info, err := dockerClient.Info(ctx)
+	result, err := dockerClient.Info(ctx, client.InfoOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("getting docker info: %w", err)
 	}
@@ -69,8 +73,8 @@ func New(ctx context.Context, dockerClient *client.Client, composeService Compos
 		mode = "include"
 	}
 
-	if info.Swarm.LocalNodeState == "active" {
-		if info.Swarm.ControlAvailable {
+	if result.Info.Swarm.LocalNodeState == "active" {
+		if result.Info.Swarm.ControlAvailable {
 			slog.Info("configuration", "docker", "swarm", "selection", mode)
 			return NewSwarmUpdater(dockerClient, dockerClient, notifier, includeOnly), nil
 		}
