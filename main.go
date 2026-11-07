@@ -84,8 +84,13 @@ func run() error {
 	}
 
 	srv := &http.Server{
-		Addr:    *addr,
-		Handler: mux,
+		Addr:              *addr,
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    64 << 10,
 	}
 
 	sigCh := make(chan os.Signal, 1)
