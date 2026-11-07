@@ -41,6 +41,7 @@ func run() error {
 	webhookURL := flag.String("webhook-url", "", "URL to send notifications to when updates succeed or fail")
 	webhookSecret := flag.String("webhook-secret", "", "secret for signing outgoing notification webhooks")
 	includeOnly := flag.Bool("include-only", false, "only update containers/services with the include label")
+	printDangerEndpoints := flag.Bool("print-danger-endpoints", false, "print the unauthenticated webhook endpoint paths and exit")
 
 	envflag.Parse()
 
@@ -60,9 +61,16 @@ func run() error {
 		return fmt.Errorf("secret is required")
 	}
 
+	if *printDangerEndpoints {
+		for i := range *dangerEndpoints {
+			fmt.Println("/webhook/" + generateEndpointPath(secrets[0], i))
+		}
+		return nil
+	}
+
 	var notifier updater.Notifier = updater.NoopNotifier{}
 	if *webhookURL != "" {
-		slog.Info("notifications enabled", "url", *webhookURL)
+		slog.Info("notifications enabled", "url", updater.RedactURL(*webhookURL))
 		notifier = updater.NewWebhookNotifier(*webhookURL, *webhookSecret)
 	}
 
@@ -78,9 +86,10 @@ func run() error {
 
 	dangerHandler := http.HandlerFunc(handler.ServeHTTPDanger)
 	for i := range *dangerEndpoints {
-		path := generateEndpointPath(secrets[0], i)
-		slog.Info("danger endpoint", "path", "/webhook/"+path)
-		mux.Handle("POST /webhook/"+path, dangerHandler)
+		mux.Handle("POST /webhook/"+generateEndpointPath(secrets[0], i), dangerHandler)
+	}
+	if *dangerEndpoints > 0 {
+		slog.Warn("unauthenticated webhook endpoints enabled, use -print-danger-endpoints to list them", "count", *dangerEndpoints)
 	}
 
 	srv := &http.Server{

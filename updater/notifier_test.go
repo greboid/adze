@@ -1,14 +1,17 @@
 package updater
 
 import (
+	"bytes"
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -181,4 +184,36 @@ func TestNoopNotifier(t *testing.T) {
 	n.NotifyPending(context.Background(), "myapp", "proj", "")
 	n.NotifyResult(context.Background(), "myapp", "proj", "", nil)
 	n.NotifyResult(context.Background(), "myapp", "proj", "", context.DeadlineExceeded)
+}
+
+func TestRedactURL(t *testing.T) {
+	tests := map[string]string{
+		"https://discord.com/api/webhooks/123/supersecret":     "https://discord.com",
+		"https://user:pass@example.com/hook?token=supersecret": "https://example.com",
+		"http://ntfy.local:8080/topic":                         "http://ntfy.local:8080",
+		"not a url":                                            "[redacted]",
+		"://bad":                                               "[redacted]",
+	}
+	for in, want := range tests {
+		if got := RedactURL(in); got != want {
+			t.Errorf("RedactURL(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestWebhookNotifier_ErrorsDoNotContainURL(t *testing.T) {
+	var buf bytes.Buffer
+	old := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	defer slog.SetDefault(old)
+
+	n := NewWebhookNotifier("http://127.0.0.1:1/hook/supersecret", "")
+	n.NotifyPending(context.Background(), "img", "target", "")
+
+	if strings.Contains(buf.String(), "supersecret") {
+		t.Errorf("log output contains secret URL path:\n%s", buf.String())
+	}
+	if !strings.Contains(buf.String(), "failed to send notification") {
+		t.Errorf("expected send failure to be logged, got:\n%s", buf.String())
+	}
 }

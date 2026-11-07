@@ -7,21 +7,25 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"time"
 )
 
 type WebhookNotifier struct {
-	url    string
-	secret string
-	client *http.Client
+	url       string
+	loggedURL string
+	secret    string
+	client    *http.Client
 }
 
 func NewWebhookNotifier(url, secret string) *WebhookNotifier {
 	return &WebhookNotifier{
-		url:    url,
-		secret: secret,
+		url:       url,
+		loggedURL: RedactURL(url),
+		secret:    secret,
 		client: &http.Client{
 			Timeout: 10 * time.Second,
 		},
@@ -60,7 +64,7 @@ func (n *WebhookNotifier) send(ctx context.Context, payload notificationPayload)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, n.url, bytes.NewReader(body))
 	if err != nil {
-		slog.Error("failed to create notification request", "image", payload.Image, "target", payload.Target, "dir", payload.Dir, "error", err)
+		slog.Error("failed to create notification request", "image", payload.Image, "target", payload.Target, "dir", payload.Dir, "url", n.loggedURL, "error", stripURL(err))
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
@@ -71,18 +75,34 @@ func (n *WebhookNotifier) send(ctx context.Context, payload notificationPayload)
 		req.Header.Set("X-Adze-Signature", "sha256="+hex.EncodeToString(mac.Sum(nil)))
 	}
 
-	slog.Debug("sending notification webhook", "image", payload.Image, "target", payload.Target, "dir", payload.Dir, "status", payload.Status, "url", n.url)
+	slog.Debug("sending notification webhook", "image", payload.Image, "target", payload.Target, "dir", payload.Dir, "status", payload.Status, "url", n.loggedURL)
 
 	resp, err := n.client.Do(req)
 	if err != nil {
-		slog.Error("failed to send notification", "image", payload.Image, "target", payload.Target, "dir", payload.Dir, "url", n.url, "error", err)
+		slog.Error("failed to send notification", "image", payload.Image, "target", payload.Target, "dir", payload.Dir, "url", n.loggedURL, "error", stripURL(err))
 		return
 	}
 	resp.Body.Close()
 
-	slog.Debug("notification sent", "image", payload.Image, "target", payload.Target, "dir", payload.Dir, "status", payload.Status, "url", n.url, "response_code", resp.StatusCode)
+	slog.Debug("notification sent", "image", payload.Image, "target", payload.Target, "dir", payload.Dir, "status", payload.Status, "url", n.loggedURL, "response_code", resp.StatusCode)
 
 	if resp.StatusCode >= 300 {
-		slog.Warn("notification webhook returned non-success status", "image", payload.Image, "target", payload.Target, "dir", payload.Dir, "url", n.url, "status", resp.StatusCode)
+		slog.Warn("notification webhook returned non-success status", "image", payload.Image, "target", payload.Target, "dir", payload.Dir, "url", n.loggedURL, "status", resp.StatusCode)
 	}
+}
+
+func RedactURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return "[redacted]"
+	}
+	return u.Scheme + "://" + u.Host
+}
+
+func stripURL(err error) error {
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		return urlErr.Err
+	}
+	return err
 }

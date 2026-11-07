@@ -17,16 +17,18 @@ Works with Forgejo, Docker Hub and docker "distribution" based registry webhooks
 | `-webhook-url`      | `WEBHOOK_URL`      | ` `             | `N`      | URL to send notifications to when updates succeed or fail                                  |
 | `-webhook-secret`   | `WEBHOOK_SECRET`   | ` `             | `N`      | Secret for signing outgoing notification webhooks                                          |
 | `-include-only`     | `INCLUDE_ONLY`     | `false`         | `N`      | Only update containers/services with the include label                                    |
+| `-print-danger-endpoints` | `PRINT_DANGER_ENDPOINTS` | `false` | `N` | Print the unauthenticated endpoint paths and exit                                    |
 
 ### Unauthenticated endpoints 
 
 If you have services that can't send signed webhooks, you can generate unauthenticated endpoints with `-danger-endpoints <n>` (or `DANGER_ENDPOINTS`). This creates `n` endpoints at `/webhook/<guid>` that accept requests without signature validation. The GUIDs are derived from your first configured secret, so they remain stable across restarts.
 
-The generated paths are logged at startup:
+The paths are not logged. To see them, run adze with the same secret and endpoint count plus `-print-danger-endpoints`; it prints them and exits:
 
 ```
-info: danger endpoint path=/webhook/a1b2c3d4-e5f6-7890-abcd-ef1234567890
-info: danger endpoint path=/webhook/f9e8d7c6-b5a4-3210-fedc-ba0987654321
+$ docker compose run --rm adze /adze -print-danger-endpoints
+/webhook/a1b2c3d4-e5f6-7890-abcd-ef1234567890
+/webhook/f9e8d7c6-b5a4-3210-fedc-ba0987654321
 ```
 
 These endpoints are effectively passwords — treat the paths as secret.
