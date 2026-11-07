@@ -13,7 +13,6 @@ type ComposeProjectLoader struct{}
 func (l ComposeProjectLoader) LoadProject(ctx context.Context, workingDir string, configFiles []string) (*composetypes.Project, error) {
 	optFns := []cli.ProjectOptionsFn{
 		cli.WithWorkingDirectory(workingDir),
-		cli.WithOsEnv,
 		cli.WithEnvFiles(),
 		cli.WithDotEnv,
 		cli.WithConfigFileEnv,

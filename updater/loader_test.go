@@ -36,10 +36,15 @@ func TestComposeProjectLoader_DotEnv(t *testing.T) {
 			expected: "postgres://app:fromdotenv@db/app",
 		},
 		{
-			name:     "os environment wins over env file",
+			name:     "env file wins over os environment",
 			dotEnv:   "ADZE_TEST_DB_PASSWORD=fromdotenv\n",
 			osEnv:    "fromos",
-			expected: "postgres://app:fromos@db/app",
+			expected: "postgres://app:fromdotenv@db/app",
+		},
+		{
+			name:     "os environment is not passed through",
+			osEnv:    "fromos",
+			expected: "postgres://app:@db/app",
 		},
 		{
 			name:     "no env file",
