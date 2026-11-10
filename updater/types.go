@@ -31,11 +31,34 @@ type ServiceUpdater interface {
 }
 
 type notificationPayload struct {
-	Image  string `json:"image"`
-	Target string `json:"target"`
-	Dir    string `json:"dir,omitempty"`
-	Status string `json:"status"`
-	Error  string `json:"error,omitempty"`
+	Image   string `json:"image"`
+	Target  string `json:"target"`
+	Dir     string `json:"dir,omitempty"`
+	Status  string `json:"status"`
+	Error   string `json:"error,omitempty"`
+	Owner   string `json:"owner,omitempty"`
+	Private bool   `json:"private"`
+}
+
+// Source describes where the image that triggered an update came from.
+type Source struct {
+	Owner   string
+	Private bool
+}
+
+type sourceKey struct{}
+
+// WithSource attaches s to ctx for inclusion in outgoing notifications.
+func WithSource(ctx context.Context, s Source) context.Context {
+	return context.WithValue(ctx, sourceKey{}, s)
+}
+
+// sourceFrom treats an unknown source as private so it isn't announced publicly.
+func sourceFrom(ctx context.Context) Source {
+	if s, ok := ctx.Value(sourceKey{}).(Source); ok {
+		return s
+	}
+	return Source{Private: true}
 }
 
 type Notifier interface {

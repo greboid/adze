@@ -51,6 +51,28 @@ func TestWebhookNotifier_NotifyPending(t *testing.T) {
 	}
 }
 
+func TestWebhookNotifier_Source(t *testing.T) {
+	var received notificationPayload
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		json.Unmarshal(body, &received)
+	}))
+	defer srv.Close()
+
+	n := NewWebhookNotifier(srv.URL, "")
+
+	n.NotifyPending(WithSource(context.Background(), Source{Owner: "myorg"}), "myapp", "proj", "")
+	if received.Owner != "myorg" || received.Private {
+		t.Errorf("expected public source owned by myorg, got owner %q private %v", received.Owner, received.Private)
+	}
+
+	received = notificationPayload{}
+	n.NotifyPending(context.Background(), "myapp", "proj", "")
+	if received.Owner != "" || !received.Private {
+		t.Errorf("expected unknown source to be private, got owner %q private %v", received.Owner, received.Private)
+	}
+}
+
 func TestWebhookNotifier_NotifyResult_Success(t *testing.T) {
 	var received notificationPayload
 

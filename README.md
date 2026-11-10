@@ -39,19 +39,23 @@ Adze can send webhook notifications to an external service whenever an update is
 
 Each notification payload is a POST request with a json payload, notifications are signed with HMAC-SHA256 when the webhook secret is set. The signature is sent in the `X-Adze-Signature` header.
 
-| Field    | Description                                                  |
-| -------- | ------------------------------------------------------------ |
-| `image`  | The image that triggered the update                          |
-| `target` | The Compose project name or Swarm service name being updated |
-| `status` | `pending` , `success`, or `failure`                          |
-| `error`  | Error message when status is `failure`, omitted otherwise    |
+| Field     | Description                                                                        |
+| --------- | ---------------------------------------------------------------------------------- |
+| `image`   | The image that triggered the update                                                |
+| `target`  | The Compose project name or Swarm service name being updated                       |
+| `status`  | `pending` , `success`, or `failure`                                                |
+| `error`   | Error message when status is `failure`, omitted otherwise                          |
+| `owner`   | Owner from the webhook or the image path, omitted if unknown                       |
+| `private` | `false` only for a public repository, and on Forgejo also a public owner           |
 
 ```json
 {
   "image": "myregistry/myapp",
   "target": "myproject",
   "status": "pending",
-  "error": ""
+  "error": "",
+  "owner": "myorg",
+  "private": false
 }
 ```
 

@@ -10,6 +10,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/greboid/adze/updater"
 )
 
 func validateSignature(secrets []string, headers http.Header, body []byte) bool {
@@ -91,6 +93,51 @@ func extractImage(body []byte) string {
 		}
 	}
 	return ""
+}
+
+// extractSource treats an image as public only if the webhook reports that it
+// is. Forgejo also sends a null repository for private repositories the
+// requester can't access, so null can't be assumed public.
+func extractSource(body []byte) updater.Source {
+	var p webhookPayload
+	if err := json.Unmarshal(body, &p); err != nil {
+		return updater.Source{Private: true}
+	}
+
+	owner := p.Package.Owner.Login
+	switch {
+	case p.Package.PackageType != "":
+		// GitHub sends the repository at the top level and has no owner visibility.
+		return updater.Source{Owner: owner, Private: p.Repository == nil || p.Repository.Private}
+	case owner != "":
+		repo := p.Package.Repository
+		return updater.Source{Owner: owner, Private: repo == nil || repo.Private || p.Package.Owner.Visibility != "public"}
+	case p.Image != "":
+		return updater.Source{Owner: imageOwner(p.Image), Private: true}
+	}
+
+	for _, event := range p.Events {
+		if event.Target.Repository != "" {
+			return updater.Source{Owner: repositoryOwner(event.Target.Repository), Private: true}
+		}
+	}
+	return updater.Source{Private: true}
+}
+
+// imageOwner returns the namespace of an image reference, skipping any registry host.
+func imageOwner(image string) string {
+	if first, rest, ok := strings.Cut(image, "/"); ok && (strings.ContainsAny(first, ".:") || first == "localhost") {
+		image = rest
+	}
+	return repositoryOwner(image)
+}
+
+func repositoryOwner(repository string) string {
+	owner, _, ok := strings.Cut(repository, "/")
+	if !ok {
+		return ""
+	}
+	return owner
 }
 
 func isRelevantEvent(body []byte) bool {

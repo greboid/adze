@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/greboid/adze/updater"
 )
 
 func TestExtractImage(t *testing.T) {
@@ -52,6 +54,43 @@ func TestExtractImage(t *testing.T) {
 			result := extractImage([]byte(tt.body))
 			if result != tt.expected {
 				t.Errorf("extractImage() = %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestExtractSource(t *testing.T) {
+	tests := []struct {
+		name     string
+		body     string
+		expected updater.Source
+	}{
+		{"public repository and owner", `{"package":{"owner":{"login":"myorg","visibility":"public"},"repository":{"private":false}}}`, updater.Source{Owner: "myorg"}},
+		{"private repository public owner", `{"package":{"owner":{"login":"myorg","visibility":"public"},"repository":{"private":true}}}`, updater.Source{Owner: "myorg", Private: true}},
+		{"public repository private owner", `{"package":{"owner":{"login":"myorg","visibility":"private"},"repository":{"private":false}}}`, updater.Source{Owner: "myorg", Private: true}},
+		{"public repository limited owner", `{"package":{"owner":{"login":"myorg","visibility":"limited"},"repository":{"private":false}}}`, updater.Source{Owner: "myorg", Private: true}},
+		{"public repository unknown owner visibility", `{"package":{"owner":{"login":"myorg"},"repository":{"private":false}}}`, updater.Source{Owner: "myorg", Private: true}},
+		{"null repository public owner", `{"package":{"owner":{"login":"myorg","visibility":"public"},"repository":null}}`, updater.Source{Owner: "myorg", Private: true}},
+		{"forgejo ignores top level repository", `{"package":{"owner":{"login":"myorg","visibility":"public"}},"repository":{"private":false}}`, updater.Source{Owner: "myorg", Private: true}},
+		{"github public repository", `{"package":{"owner":{"login":"myorg"},"package_type":"CONTAINER"},"repository":{"private":false}}`, updater.Source{Owner: "myorg"}},
+		{"github private repository", `{"package":{"owner":{"login":"myorg"},"package_type":"CONTAINER"},"repository":{"private":true}}`, updater.Source{Owner: "myorg", Private: true}},
+		{"github no repository", `{"package":{"owner":{"login":"myorg"},"package_type":"CONTAINER"}}`, updater.Source{Owner: "myorg", Private: true}},
+		{"generic image", `{"image":"myorg/myapp"}`, updater.Source{Owner: "myorg", Private: true}},
+		{"generic image with host", `{"image":"git.example.com/myorg/myapp:dev"}`, updater.Source{Owner: "myorg", Private: true}},
+		{"generic image with port", `{"image":"registry:5000/myorg/myapp"}`, updater.Source{Owner: "myorg", Private: true}},
+		{"generic image localhost", `{"image":"localhost/myorg/myapp"}`, updater.Source{Owner: "myorg", Private: true}},
+		{"generic image host no owner", `{"image":"git.example.com/myapp"}`, updater.Source{Private: true}},
+		{"generic image bare", `{"image":"myapp:latest"}`, updater.Source{Private: true}},
+		{"registry event", `{"events":[{"action":"push","target":{"repository":"myorg/myapp"}}]}`, updater.Source{Owner: "myorg", Private: true}},
+		{"registry event dotless host", `{"events":[{"action":"push","target":{"repository":"myorg/myapp"},"request":{"host":"registry"}}]}`, updater.Source{Owner: "myorg", Private: true}},
+		{"registry event no owner", `{"events":[{"action":"push","target":{"repository":"myapp"}}]}`, updater.Source{Private: true}},
+		{"malformed", `{"package":`, updater.Source{Private: true}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if result := extractSource([]byte(tt.body)); result != tt.expected {
+				t.Errorf("extractSource() = %+v, want %+v", result, tt.expected)
 			}
 		})
 	}

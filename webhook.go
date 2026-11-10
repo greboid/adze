@@ -147,7 +147,7 @@ func (h *Handler) handleWebhook(w http.ResponseWriter, r *http.Request, skipSign
 	slog.Info("received webhook", "image", image, "tag", tag, "source", r.URL.Path)
 
 	switch h.enqueue(updateRequest{
-		ctx:    context.WithoutCancel(r.Context()),
+		ctx:    updater.WithSource(context.WithoutCancel(r.Context()), extractSource(payload)),
 		image:  image,
 		tag:    tag,
 		danger: skipSignature,

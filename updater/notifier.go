@@ -56,6 +56,9 @@ func (n *WebhookNotifier) NotifyResult(ctx context.Context, image string, target
 }
 
 func (n *WebhookNotifier) send(ctx context.Context, payload notificationPayload) {
+	source := sourceFrom(ctx)
+	payload.Owner, payload.Private = source.Owner, source.Private
+
 	body, err := json.Marshal(payload)
 	if err != nil {
 		slog.Error("failed to marshal notification payload", "image", payload.Image, "target", payload.Target, "dir", payload.Dir, "error", err)
@@ -100,8 +103,7 @@ func RedactURL(raw string) string {
 }
 
 func stripURL(err error) error {
-	var urlErr *url.Error
-	if errors.As(err, &urlErr) {
+	if urlErr, ok := errors.AsType[*url.Error](err); ok {
 		return urlErr.Err
 	}
 	return err

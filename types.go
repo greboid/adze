@@ -8,12 +8,19 @@ import (
 )
 
 type webhookPayload struct {
-	Image   string `json:"image"`
+	Image      string `json:"image"`
+	Repository *struct {
+		Private bool `json:"private"`
+	} `json:"repository"`
 	Package struct {
 		Owner struct {
-			Login   string `json:"login"`
-			HTMLURL string `json:"html_url"`
+			Login      string `json:"login"`
+			HTMLURL    string `json:"html_url"`
+			Visibility string `json:"visibility"`
 		} `json:"owner"`
+		Repository *struct {
+			Private bool `json:"private"`
+		} `json:"repository"`
 		Type           string `json:"type"`
 		PackageType    string `json:"package_type"`
 		Name           string `json:"name"`
