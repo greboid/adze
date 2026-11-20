@@ -9,7 +9,7 @@ require (
 	github.com/docker/cli v29.9.3+incompatible
 	github.com/docker/compose/v5 v5.7.0
 	github.com/moby/moby/api v1.57.0
-	github.com/moby/moby/client v0.6.2
+	github.com/moby/moby/client v0.6.3
 )
 
 require (
