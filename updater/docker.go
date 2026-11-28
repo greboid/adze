@@ -32,10 +32,10 @@ func newSlogWriter(stream string) io.Writer {
 
 // NewFromEnv connects to docker using the standard environment variables and docker config,
 // and returns a compose or swarm updater depending on how the daemon is configured.
-func NewFromEnv(ctx context.Context, notifier Notifier, includeOnly bool) (ImageUpdater, error) {
-	opts := cliflags.NewClientOptions()
+func NewFromEnv(ctx context.Context, notifier Notifier, includeOnly bool, opts ...Option) (ImageUpdater, error) {
+	clientOpts := cliflags.NewClientOptions()
 	if fi, err := os.Stat(config.Dir()); err == nil && fi.IsDir() {
-		opts.ConfigDir = config.Dir()
+		clientOpts.ConfigDir = config.Dir()
 	}
 
 	dockerCli, err := command.NewDockerCli(
@@ -45,7 +45,7 @@ func NewFromEnv(ctx context.Context, notifier Notifier, includeOnly bool) (Image
 	if err != nil {
 		return nil, fmt.Errorf("creating docker cli: %w", err)
 	}
-	if err := dockerCli.Initialize(opts); err != nil {
+	if err := dockerCli.Initialize(clientOpts); err != nil {
 		return nil, fmt.Errorf("initializing docker cli: %w", err)
 	}
 	composeService, err := compose.NewComposeService(dockerCli, compose.WithEventProcessor(display.Plain(dockerCli.Err())))
@@ -58,11 +58,11 @@ func NewFromEnv(ctx context.Context, notifier Notifier, includeOnly bool) (Image
 		return nil, fmt.Errorf("creating docker client: %w", err)
 	}
 
-	return New(ctx, dockerClient, composeService, notifier, includeOnly)
+	return New(ctx, dockerClient, composeService, notifier, includeOnly, opts...)
 }
 
 // New returns a swarm updater if the docker daemon is a swarm manager, or a compose updater otherwise.
-func New(ctx context.Context, dockerClient *client.Client, composeService ComposeUpRunner, notifier Notifier, includeOnly bool) (ImageUpdater, error) {
+func New(ctx context.Context, dockerClient *client.Client, composeService ComposeUpRunner, notifier Notifier, includeOnly bool, opts ...Option) (ImageUpdater, error) {
 	result, err := dockerClient.Info(ctx, client.InfoOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("getting docker info: %w", err)
@@ -81,6 +81,6 @@ func New(ctx context.Context, dockerClient *client.Client, composeService Compos
 		return nil, fmt.Errorf("this node is a swarm worker, adze must run on a swarm manager")
 	}
 
-	slog.Info("configuration", "docker", "compose", "selection", mode)
-	return NewUpdater(composeService, dockerClient, ComposeProjectLoader{}, notifier, includeOnly), nil
+	slog.Info("configuration", "docker", "compose", "selection", mode, "lock_dirs", newOptions(opts).lockDirs)
+	return NewUpdater(composeService, dockerClient, ComposeProjectLoader{}, notifier, includeOnly, opts...), nil
 }

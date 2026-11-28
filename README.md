@@ -17,7 +17,12 @@ Works with Forgejo, Docker Hub and docker "distribution" based registry webhooks
 | `-webhook-url`      | `WEBHOOK_URL`      | ` `             | `N`      | URL to send notifications to when updates succeed or fail                                  |
 | `-webhook-secret`   | `WEBHOOK_SECRET`   | ` `             | `N`      | Secret for signing outgoing notification webhooks                                          |
 | `-include-only`     | `INCLUDE_ONLY`     | `false`         | `N`      | Only update containers/services with the include label                                    |
+| `-lock-dirs`       | `LOCK_DIRS`        | `true`          | `N`      | Hold an exclusive `flock` on a Compose project's directory while updating it               |
 | `-print-danger-endpoints` | `PRINT_DANGER_ENDPOINTS` | `false` | `N` | Print the unauthenticated endpoint paths and exit                                    |
+
+### Directory locking
+
+By default adze takes an exclusive `flock` on each Compose project's working directory before running `up`, and waits until the lock is free. Other tools that take the same lock (such as Drover) will not run Compose for that project at the same time. Set `-lock-dirs=false` (or `LOCK_DIRS=false`) to disable this. For locking to work, project directories must be mounted into the adze container at the same path as on the host; if a project's directory does not exist in the container, adze logs a warning and updates it without a lock.
 
 ### Unauthenticated endpoints 
 

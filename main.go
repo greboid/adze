@@ -41,6 +41,7 @@ func run() error {
 	webhookURL := flag.String("webhook-url", "", "URL to send notifications to when updates succeed or fail")
 	webhookSecret := flag.String("webhook-secret", "", "secret for signing outgoing notification webhooks")
 	includeOnly := flag.Bool("include-only", false, "only update containers/services with the include label")
+	lockDirs := flag.Bool("lock-dirs", true, "hold an exclusive flock on a compose project's directory while updating it")
 	printDangerEndpoints := flag.Bool("print-danger-endpoints", false, "print the unauthenticated webhook endpoint paths and exit")
 
 	envflag.Parse()
@@ -74,7 +75,7 @@ func run() error {
 		notifier = updater.NewWebhookNotifier(*webhookURL, *webhookSecret)
 	}
 
-	imageUpdater, err := updater.NewFromEnv(context.Background(), notifier, *includeOnly)
+	imageUpdater, err := updater.NewFromEnv(context.Background(), notifier, *includeOnly, updater.WithDirLocking(*lockDirs))
 	if err != nil {
 		return err
 	}

@@ -81,6 +81,7 @@ type Updater struct {
 	projectLoader  ProjectLoader
 	notifier       Notifier
 	includeOnly    bool
+	lockDirs       bool
 }
 
 type ComposeProject struct {
@@ -116,4 +117,24 @@ func (e *UpdateErrors) Error() string {
 
 func (e *UpdateErrors) Unwrap() []error {
 	return e.Errors
+}
+
+// Option configures an updater.
+type Option func(*options)
+
+type options struct {
+	lockDirs bool
+}
+
+func newOptions(opts []Option) options {
+	o := options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+	return o
+}
+
+// WithDirLocking sets whether a compose project's directory is flocked while it is updated. Defaults to false.
+func WithDirLocking(enabled bool) Option {
+	return func(o *options) { o.lockDirs = enabled }
 }

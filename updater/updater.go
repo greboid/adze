@@ -14,8 +14,10 @@ import (
 const excludeLabel = "com.greboid.adze.excluded"
 const includeLabel = "com.greboid.adze.included"
 
-func NewUpdater(composeService ComposeUpRunner, dockerClient ContainerLister, projectLoader ProjectLoader, notifier Notifier, includeOnly bool) *Updater {
+func NewUpdater(composeService ComposeUpRunner, dockerClient ContainerLister, projectLoader ProjectLoader, notifier Notifier, includeOnly bool, opts ...Option) *Updater {
+	o := newOptions(opts)
 	return &Updater{
+		lockDirs:       o.lockDirs,
 		composeService: composeService,
 		dockerClient:   dockerClient,
 		projectLoader:  projectLoader,
@@ -149,6 +151,18 @@ func (u *Updater) updateProject(ctx context.Context, proj ComposeProject, image 
 	var files []string
 	if proj.ConfigFiles != "" {
 		files = strings.Split(proj.ConfigFiles, ",")
+	}
+
+	if u.lockDirs {
+		lock, err := lockDir(ctx, proj.WorkingDir)
+		if err != nil {
+			return fmt.Errorf("locking %s: %w", proj.WorkingDir, err)
+		}
+		if lock == nil {
+			slog.Warn("project directory not found, updating without lock", "project", proj.ProjectName, "dir", proj.WorkingDir)
+		} else {
+			defer lock.Close()
+		}
 	}
 
 	if err := u.runUp(ctx, proj.WorkingDir, files); err != nil {

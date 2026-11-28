@@ -25,12 +25,16 @@ type mockComposeUpRunner struct {
 	project *composetypes.Project
 	options api.UpOptions
 	err     error
+	onUp    func()
 }
 
 func (m *mockComposeUpRunner) Up(_ context.Context, project *composetypes.Project, options api.UpOptions) error {
 	m.called.Store(true)
 	m.project = project
 	m.options = options
+	if m.onUp != nil {
+		m.onUp()
+	}
 	return m.err
 }
 
