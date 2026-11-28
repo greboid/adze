@@ -23,6 +23,7 @@ func NewUpdater(composeService ComposeUpRunner, dockerClient ContainerLister, pr
 		projectLoader:  projectLoader,
 		notifier:       notifier,
 		includeOnly:    includeOnly,
+		self:           o.self,
 	}
 }
 
@@ -39,15 +40,21 @@ func (u *Updater) HandleUpdate(ctx context.Context, image string, tag string) er
 
 	var errs []error
 	for _, proj := range projects {
-		slog.Info("updating compose project", "project", proj.ProjectName, "dir", proj.WorkingDir, "image", image, "tag", tag, "config", proj.ConfigFiles)
-		u.notifier.NotifyPending(ctx, image, proj.ProjectName, proj.WorkingDir)
-		if err := u.updateProject(ctx, proj, image, tag); err != nil {
-			slog.Error("failed to update project", "project", proj.ProjectName, "dir", proj.WorkingDir, "image", image, "tag", tag, "error", err)
-			u.notifier.NotifyResult(ctx, image, proj.ProjectName, proj.WorkingDir, err)
-			errs = append(errs, &ProjectUpdateError{Project: proj.ProjectName, Err: err})
-		} else {
-			slog.Info("updated compose project", "project", proj.ProjectName, "dir", proj.WorkingDir, "image", image, "tag", tag)
-			u.notifier.NotifyResult(ctx, image, proj.ProjectName, proj.WorkingDir, nil)
+		if !proj.OnlySelf {
+			slog.Info("updating compose project", "project", proj.ProjectName, "dir", proj.WorkingDir, "image", image, "tag", tag, "config", proj.ConfigFiles)
+			u.notifier.NotifyPending(ctx, image, proj.ProjectName, proj.WorkingDir)
+			if err := u.updateProject(ctx, proj, image, tag); err != nil {
+				slog.Error("failed to update project", "project", proj.ProjectName, "dir", proj.WorkingDir, "image", image, "tag", tag, "error", err)
+				u.notifier.NotifyResult(ctx, image, proj.ProjectName, proj.WorkingDir, err)
+				errs = append(errs, &ProjectUpdateError{Project: proj.ProjectName, Err: err})
+			} else {
+				slog.Info("updated compose project", "project", proj.ProjectName, "dir", proj.WorkingDir, "image", image, "tag", tag)
+				u.notifier.NotifyResult(ctx, image, proj.ProjectName, proj.WorkingDir, nil)
+			}
+		}
+		if proj.SelfOutdated {
+			slog.Warn("adze cannot update its own container, update it manually", "project", proj.ProjectName, "service", u.self.Service, "dir", proj.WorkingDir, "image", image, "tag", tag)
+			u.notifier.NotifySkipped(ctx, image, proj.ProjectName, proj.WorkingDir, fmt.Sprintf("service %s is adze itself and must be updated manually", u.self.Service))
 		}
 	}
 	if len(errs) > 0 {
@@ -56,10 +63,14 @@ func (u *Updater) HandleUpdate(ctx context.Context, image string, tag string) er
 	return nil
 }
 
-func (u *Updater) runUp(ctx context.Context, workingDir string, configFiles []string) error {
+func (u *Updater) runUp(ctx context.Context, projectName string, workingDir string, configFiles []string) error {
 	project, err := u.projectLoader.LoadProject(ctx, workingDir, configFiles)
 	if err != nil {
 		return fmt.Errorf("loading project: %w", err)
+	}
+
+	if u.self != nil && projectName == u.self.Project {
+		project = project.WithServicesDisabled(u.self.Service)
 	}
 
 	slog.Debug("loaded compose project", "project", project.Name, "services", len(project.Services))
@@ -101,7 +112,7 @@ func (u *Updater) findComposeProjects(ctx context.Context, image string, tag str
 		return nil, fmt.Errorf("listing containers: %w", err)
 	}
 
-	seen := make(map[string]bool)
+	seen := make(map[string]int)
 	var projects []ComposeProject
 
 	for _, c := range containers.Items {
@@ -131,17 +142,24 @@ func (u *Updater) findComposeProjects(ctx context.Context, image string, tag str
 			continue
 		}
 
-		if seen[projectName] {
-			slog.Debug("skipping container, project already seen", "container", c.Names, "project", projectName)
-			continue
-		}
-		seen[projectName] = true
+		isSelf := u.self != nil && projectName == u.self.Project && c.Labels[api.ServiceLabel] == u.self.Service
 
-		projects = append(projects, ComposeProject{
-			WorkingDir:  workingDir,
-			ConfigFiles: configFiles,
-			ProjectName: projectName,
-		})
+		idx, ok := seen[projectName]
+		if !ok {
+			idx = len(projects)
+			seen[projectName] = idx
+			projects = append(projects, ComposeProject{
+				WorkingDir:  workingDir,
+				ConfigFiles: configFiles,
+				ProjectName: projectName,
+				OnlySelf:    true,
+			})
+		}
+		if isSelf {
+			projects[idx].SelfOutdated = true
+		} else {
+			projects[idx].OnlySelf = false
+		}
 	}
 
 	return projects, nil
@@ -165,7 +183,7 @@ func (u *Updater) updateProject(ctx context.Context, proj ComposeProject, image 
 		}
 	}
 
-	if err := u.runUp(ctx, proj.WorkingDir, files); err != nil {
+	if err := u.runUp(ctx, proj.ProjectName, proj.WorkingDir, files); err != nil {
 		return fmt.Errorf("up failed: %w", err)
 	}
 

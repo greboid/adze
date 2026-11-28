@@ -55,6 +55,16 @@ func (n *WebhookNotifier) NotifyResult(ctx context.Context, image string, target
 	n.send(ctx, payload)
 }
 
+func (n *WebhookNotifier) NotifySkipped(ctx context.Context, image string, target string, dir string, reason string) {
+	n.send(ctx, notificationPayload{
+		Image:   image,
+		Target:  target,
+		Dir:     dir,
+		Status:  "skipped",
+		Message: reason,
+	})
+}
+
 func (n *WebhookNotifier) send(ctx context.Context, payload notificationPayload) {
 	source := sourceFrom(ctx)
 	payload.Owner, payload.Private = source.Owner, source.Private

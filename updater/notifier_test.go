@@ -239,3 +239,25 @@ func TestWebhookNotifier_ErrorsDoNotContainURL(t *testing.T) {
 		t.Errorf("expected send failure to be logged, got:\n%s", buf.String())
 	}
 }
+
+func TestWebhookNotifier_NotifySkipped(t *testing.T) {
+	var received notificationPayload
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		json.Unmarshal(body, &received)
+	}))
+	defer srv.Close()
+
+	n := NewWebhookNotifier(srv.URL, "")
+	n.NotifySkipped(context.Background(), "adze:latest", "infra", "/opt/infra", "update manually")
+
+	if received.Status != "skipped" {
+		t.Errorf("expected status %q, got %q", "skipped", received.Status)
+	}
+	if received.Message != "update manually" {
+		t.Errorf("expected message %q, got %q", "update manually", received.Message)
+	}
+	if received.Error != "" {
+		t.Errorf("expected no error, got %q", received.Error)
+	}
+}

@@ -48,8 +48,9 @@ Each notification payload is a POST request with a json payload, notifications a
 | --------- | ---------------------------------------------------------------------------------- |
 | `image`   | The image that triggered the update                                                |
 | `target`  | The Compose project name or Swarm service name being updated                       |
-| `status`  | `pending` , `success`, or `failure`                                                |
+| `status`  | `pending` , `success`, `failure`, or `skipped`                                     |
 | `error`   | Error message when status is `failure`, omitted otherwise                          |
+| `message` | Reason when status is `skipped`, omitted otherwise                                 |
 | `owner`   | Owner from the webhook or the image path, omitted if unknown                       |
 | `private` | `false` only for a public repository, and on Forgejo also a public owner           |
 
@@ -63,6 +64,10 @@ Each notification payload is a POST request with a json payload, notifications a
   "private": false
 }
 ```
+
+### Updating adze's own stack
+
+When adze runs as a Compose service, it never recreates its own container, as that would stop it mid-update. Other services in its project are still updated. If the updated image is the one adze's own container runs, adze logs a warning and sends a `skipped` notification; update adze manually.
 
 ## Excluding containers from updates
 

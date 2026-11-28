@@ -81,6 +81,11 @@ func New(ctx context.Context, dockerClient *client.Client, composeService Compos
 		return nil, fmt.Errorf("this node is a swarm worker, adze must run on a swarm manager")
 	}
 
+	if self, ok := DetectSelf(ctx, dockerClient); ok {
+		slog.Info("running as compose service", "project", self.Project, "service", self.Service)
+		opts = append(opts, WithSelf(self))
+	}
+
 	slog.Info("configuration", "docker", "compose", "selection", mode, "lock_dirs", newOptions(opts).lockDirs)
 	return NewUpdater(composeService, dockerClient, ComposeProjectLoader{}, notifier, includeOnly, opts...), nil
 }

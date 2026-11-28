@@ -36,6 +36,7 @@ type notificationPayload struct {
 	Dir     string `json:"dir,omitempty"`
 	Status  string `json:"status"`
 	Error   string `json:"error,omitempty"`
+	Message string `json:"message,omitempty"`
 	Owner   string `json:"owner,omitempty"`
 	Private bool   `json:"private"`
 }
@@ -64,12 +65,14 @@ func sourceFrom(ctx context.Context) Source {
 type Notifier interface {
 	NotifyPending(ctx context.Context, image string, target string, dir string)
 	NotifyResult(ctx context.Context, image string, target string, dir string, err error)
+	NotifySkipped(ctx context.Context, image string, target string, dir string, reason string)
 }
 
 type NoopNotifier struct{}
 
-func (NoopNotifier) NotifyPending(_ context.Context, _ string, _ string, _ string)         {}
-func (NoopNotifier) NotifyResult(_ context.Context, _ string, _ string, _ string, _ error) {}
+func (NoopNotifier) NotifyPending(_ context.Context, _ string, _ string, _ string)           {}
+func (NoopNotifier) NotifyResult(_ context.Context, _ string, _ string, _ string, _ error)   {}
+func (NoopNotifier) NotifySkipped(_ context.Context, _ string, _ string, _ string, _ string) {}
 
 type ImageUpdater interface {
 	HandleUpdate(ctx context.Context, image string, tag string) error
@@ -82,12 +85,15 @@ type Updater struct {
 	notifier       Notifier
 	includeOnly    bool
 	lockDirs       bool
+	self           *Self
 }
 
 type ComposeProject struct {
-	WorkingDir  string
-	ConfigFiles string
-	ProjectName string
+	WorkingDir   string
+	ConfigFiles  string
+	ProjectName  string
+	OnlySelf     bool
+	SelfOutdated bool
 }
 
 type ProjectUpdateError struct {
@@ -124,6 +130,7 @@ type Option func(*options)
 
 type options struct {
 	lockDirs bool
+	self     *Self
 }
 
 func newOptions(opts []Option) options {
@@ -137,4 +144,8 @@ func newOptions(opts []Option) options {
 // WithDirLocking sets whether a compose project's directory is flocked while it is updated. Defaults to false.
 func WithDirLocking(enabled bool) Option {
 	return func(o *options) { o.lockDirs = enabled }
+}
+
+func WithSelf(self Self) Option {
+	return func(o *options) { o.self = &self }
 }
